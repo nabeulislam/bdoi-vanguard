@@ -7,266 +7,186 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #05070a;
-      color: #c8ccd4;
+      font-family: sans-serif;
+      background: #111;
+      color: #ddd;
       height: 100vh;
       overflow: hidden;
-      user-select: none;
     }
-
-    /* Subtle animated background */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background:
-        radial-gradient(ellipse at 20% 50%, rgba(0,180,255,0.04) 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 50%, rgba(123,47,247,0.04) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .app { height: 100vh; display: flex; flex-direction: column; position: relative; z-index: 1; }
-
-    /* Title bar area */
-    .titlebar {
-      padding: 14px 20px 0;
-      text-align: center;
-    }
-    .logo {
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 3px;
-      background: linear-gradient(135deg, #00b4ff, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    /* Login View */
-    .login-view {
-      flex: 1;
+    .app {
+      height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 0 32px 20px;
-    }
-    .login-card { width: 100%; max-width: 320px; }
-    .login-header {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-    .login-header .icon {
-      width: 48px; height: 48px;
-      margin: 0 auto 12px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(0,180,255,0.15), rgba(123,47,247,0.15));
-      border: 1px solid rgba(0,180,255,0.2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
-    }
-    .login-header h2 {
-      font-size: 16px;
-      font-weight: 600;
-      color: #e4e7ed;
-    }
-    .login-header p {
-      font-size: 12px;
-      color: #555b66;
-      margin-top: 4px;
+      padding: 24px;
     }
 
-    .field { margin-bottom: 12px; }
+    /* Logo */
+    .logo {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: #0af;
+      margin-bottom: 20px;
+    }
+
+    /* Login */
+    #login-view {
+      width: 100%;
+      max-width: 300px;
+    }
+    .form-title {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .form-title .icon { font-size: 36px; display: block; margin-bottom: 8px; }
+    .form-title h2 { font-size: 16px; font-weight: 600; color: #eee; }
+    .form-title p { font-size: 12px; color: #666; margin-top: 4px; }
+
+    .field { margin-bottom: 14px; }
     .field label {
       display: block;
       font-size: 11px;
-      font-weight: 500;
-      color: #6b7280;
-      margin-bottom: 5px;
-      letter-spacing: 0.3px;
-    }
-    .field input {
-      width: 100%;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid #1e2330;
-      border-radius: 8px;
-      color: #e4e7ed;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .field input::placeholder { color: #3a3f4b; }
-    .field input:focus {
-      border-color: #00b4ff;
-      box-shadow: 0 0 0 3px rgba(0,180,255,0.08);
-    }
-    .field input.mono {
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-      font-size: 11.5px;
+      font-weight: 600;
+      color: #777;
+      margin-bottom: 6px;
+      text-transform: uppercase;
       letter-spacing: 0.5px;
     }
-
-    .login-btn {
+    .field input {
+      display: block;
       width: 100%;
-      padding: 11px;
-      margin-top: 16px;
-      background: linear-gradient(135deg, #00b4ff, #8b5cf6);
+      padding: 10px 12px;
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 8px;
+      color: #eee;
+      font-size: 14px;
+      font-family: sans-serif;
+      outline: none;
+    }
+    .field input:focus { border-color: #0af; }
+    .field input.mono { font-family: monospace; font-size: 12px; }
+
+    .btn-login {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-top: 18px;
+      background: #0af;
       border: none;
       border-radius: 8px;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 600;
+      color: #000;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: sans-serif;
       cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.5px;
     }
-    .login-btn:hover { opacity: 0.92; }
-    .login-btn:active { transform: scale(0.98); }
-    .login-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .btn-login:hover { background: #09e; }
+    .btn-login:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .error-msg {
-      color: #ef4444;
+      color: #f44;
       font-size: 12px;
       text-align: center;
       margin-top: 10px;
-      min-height: 16px;
+      min-height: 18px;
+      word-break: break-word;
     }
 
-    /* Monitor View */
-    .monitor-view {
+    /* Monitor */
+    #monitor-view {
       display: none;
-      flex: 1;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 0 32px 20px;
+      width: 100%;
+      max-width: 300px;
       text-align: center;
     }
+    .shield { font-size: 48px; margin-bottom: 12px; }
+    .greeting { font-size: 22px; font-weight: 700; color: #eee; }
+    .greeting span { color: #0af; }
 
-    .shield-icon {
-      width: 72px; height: 72px;
+    .status-pill {
+      display: inline-block;
+      padding: 6px 16px;
+      margin: 14px 0 20px;
+      background: #0f02;
+      border: 2px solid #0f04;
       border-radius: 20px;
-      background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,180,255,0.1));
-      border: 1px solid rgba(0,255,136,0.2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 32px;
-      margin-bottom: 16px;
-      animation: shield-glow 3s ease-in-out infinite;
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f8;
     }
-    @keyframes shield-glow {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,0.1); }
-      50% { box-shadow: 0 0 20px 4px rgba(0,255,136,0.08); }
-    }
-
-    .greeting {
-      font-size: 20px;
-      font-weight: 700;
-      color: #e4e7ed;
-      margin-bottom: 4px;
-    }
-    .greeting span { color: #00b4ff; }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 14px;
-      border-radius: 20px;
-      background: rgba(0,255,136,0.08);
-      border: 1px solid rgba(0,255,136,0.2);
-      font-size: 12px;
-      font-weight: 500;
-      color: #00ff88;
-      margin: 12px 0 20px;
-    }
-    .status-badge .dot {
-      width: 7px; height: 7px;
+    .status-pill .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
-      background: #00ff88;
-      animation: blink 2s ease-in-out infinite;
+      background: #0f8;
+      margin-right: 6px;
+      vertical-align: middle;
+      animation: blink 2s infinite;
     }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    .meta {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      width: 100%;
-      max-width: 280px;
-    }
-    .meta-row {
+    .info-box {
+      background: #1a1a1a;
+      border: 2px solid #222;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 8px 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid #1a1e28;
-      border-radius: 8px;
-      font-size: 11px;
+      font-size: 12px;
     }
-    .meta-row .label { color: #555b66; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
-    .meta-row .value { color: #8b90a0; font-family: 'SF Mono', monospace; font-size: 10.5px; }
+    .info-box .lbl { color: #666; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+    .info-box .val { color: #999; font-family: monospace; }
 
-    .hint {
-      margin-top: 20px;
-      font-size: 11px;
-      color: #2a2e38;
-      line-height: 1.6;
-    }
+    .hint { margin-top: 16px; font-size: 11px; color: #444; line-height: 1.7; }
   </style>
 </head>
 <body>
   <div class="app">
-    <div class="titlebar">
-      <div class="logo">BDOI VANGUARD</div>
-    </div>
+    <div class="logo">BDOI VANGUARD</div>
 
     <!-- Login -->
-    <div id="login-view" class="login-view">
-      <div class="login-card">
-        <div class="login-header">
-          <div class="icon">🛡</div>
-          <h2>Contest Sign In</h2>
-          <p>Enter your credentials to start monitoring</p>
-        </div>
-
-        <div class="field">
-          <label>Contest ID</label>
-          <input type="text" id="contest-input" class="mono" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
-        </div>
-        <div class="field">
-          <label>Email</label>
-          <input type="email" id="email" placeholder="you@bdoi.org" autocomplete="email" />
-        </div>
-        <div class="field">
-          <label>Password</label>
-          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
-        </div>
-
-        <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In & Start Monitoring</button>
-        <div id="error" class="error-msg"></div>
+    <div id="login-view">
+      <div class="form-title">
+        <span class="icon">🛡</span>
+        <h2>Contest Sign In</h2>
+        <p>Enter your credentials to begin</p>
       </div>
+
+      <div class="field">
+        <label>Contest ID</label>
+        <input type="text" id="contest-input" class="mono" placeholder="paste from dashboard" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="you@bdoi.org" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="your password" autocomplete="current-password" />
+      </div>
+
+      <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div id="error" class="error-msg"></div>
     </div>
 
     <!-- Monitoring -->
-    <div id="monitor-view" class="monitor-view">
-      <div class="shield-icon">🛡️</div>
+    <div id="monitor-view">
+      <div class="shield">🛡️</div>
       <div class="greeting">Hi, <span id="user-name">—</span></div>
-      <div class="status-badge">
-        <div class="dot"></div>
-        Monitoring Active
+      <div class="status-pill"><span class="dot"></span>Monitoring Active</div>
+      <div class="info-box">
+        <span class="lbl">Contest</span>
+        <span class="val" id="contest-id">—</span>
       </div>
-      <div class="meta">
-        <div class="meta-row">
-          <span class="label">Contest</span>
-          <span class="value" id="contest-id">—</span>
-        </div>
-        <div class="meta-row">
-          <span class="label">Session</span>
-          <span class="value" id="session-id">—</span>
-        </div>
+      <div class="info-box">
+        <span class="lbl">Session</span>
+        <span class="val" id="session-id">—</span>
       </div>
       <div class="hint">
         You can minimize this window.<br>
@@ -277,26 +197,32 @@
 
   <script>
     function getInvoke() {
-      if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke;
-      if (window.__TAURI_INTERNALS__) return window.__TAURI_INTERNALS__.invoke;
+      try {
+        if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke;
+        if (window.__TAURI_INTERNALS__) {
+          return function(cmd, args) {
+            return window.__TAURI_INTERNALS__.invoke(cmd, args);
+          };
+        }
+      } catch(e) {}
       return null;
     }
 
     async function doLogin() {
-      const contestId = document.getElementById('contest-input').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const errorEl = document.getElementById('error');
-      const btn = document.getElementById('login-btn');
+      var contestId = document.getElementById('contest-input').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var errorEl = document.getElementById('error');
+      var btn = document.getElementById('login-btn');
 
       if (!contestId || !email || !password) {
         errorEl.textContent = 'Please fill in all fields';
         return;
       }
 
-      const invoke = getInvoke();
+      var invoke = getInvoke();
       if (!invoke) {
-        errorEl.textContent = 'App not ready — please wait a moment and retry';
+        errorEl.textContent = 'App not ready. Please wait and retry.';
         return;
       }
 
@@ -305,23 +231,30 @@
       errorEl.textContent = '';
 
       try {
-        const result = await invoke('login', { contestId, email, password });
-        if (result.success) {
-          document.getElementById('user-name').textContent = result.name;
-          document.getElementById('session-id').textContent = result.user_id.slice(0, 8) + '…';
-          document.getElementById('contest-id').textContent = contestId.slice(0, 8) + '…';
+        var result = await invoke('login', { contestId: contestId, email: email, password: password });
+        if (result && result.success) {
+          document.getElementById('user-name').textContent = result.name || email;
+          document.getElementById('session-id').textContent = (result.user_id || '').slice(0, 8) + '...';
+          document.getElementById('contest-id').textContent = contestId.slice(0, 8) + '...';
           document.getElementById('login-view').style.display = 'none';
-          document.getElementById('monitor-view').style.display = 'flex';
+          document.getElementById('monitor-view').style.display = 'block';
+        } else {
+          errorEl.textContent = 'Unexpected response';
+          btn.disabled = false;
+          btn.textContent = 'Sign In';
         }
       } catch (e) {
-        const msg = typeof e === 'string' ? e : (e && e.message ? e.message : JSON.stringify(e));
+        var msg = '';
+        if (typeof e === 'string') msg = e;
+        else if (e && e.message) msg = e.message;
+        else try { msg = JSON.stringify(e); } catch(x) { msg = 'Login failed'; }
         errorEl.textContent = msg || 'Login failed';
         btn.disabled = false;
-        btn.textContent = 'Sign In & Start Monitoring';
+        btn.textContent = 'Sign In';
       }
     }
 
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && document.getElementById('login-view').style.display !== 'none') {
         doLogin();
       }
