@@ -20,8 +20,8 @@ Contestant PC                    Cloud                     Admin
 ```
 
 1. **Admin** creates a contest and contestant accounts in the dashboard
-2. **Contestant** opens the agent, logs in with their credentials
-3. **Agent** shows "Hi, {name}" and starts silent monitoring
+2. **Admin** shares the **Contest ID**, login email, and password with each contestant
+3. **Contestant** opens the agent → enters **Contest ID + Email + Password** → sees "Hi, {name}"
 4. **Violations** stream to the dashboard in realtime
 5. **Admin** reviews evidence and confirms/dismisses each flag
 
@@ -183,15 +183,21 @@ sudo apt install wmctrl xdotool xclip
 
 #### 3.2 Build
 
+**Install the Tauri CLI** (one time):
+```bash
+cargo install tauri-cli
+```
+
 **Linux:**
 ```bash
 cd agent/src-tauri
 export BDOI_SUPABASE_URL="https://xxxxxxxx.supabase.co"
 export BDOI_SUPABASE_ANON_KEY="your-anon-key"
-export BDOI_CONTEST_ID="your-contest-id"
 
 cargo tauri build
 ```
+
+> **Note:** Contest ID is no longer baked into the build. Contestants enter it at login time.
 
 Output files:
 ```
@@ -204,7 +210,6 @@ target/release/bundle/appimage/bdoi-vanguard_0.1.0_amd64.AppImage
 cd agent\src-tauri
 set BDOI_SUPABASE_URL=https://xxxxxxxx.supabase.co
 set BDOI_SUPABASE_ANON_KEY=your-anon-key
-set BDOI_CONTEST_ID=your-contest-id
 
 cargo tauri build
 ```
@@ -221,15 +226,17 @@ target\release\bundle\nsis\bdoi-vanguard_0.1.0_x64-setup.exe
 
 1. **Upload** agent installers (`.deb`, `.AppImage`, `.msi`, `.exe`) to GitHub Releases or a download page
 2. **Dashboard** → Admin → Manage Contests → **Create** a new contest
-3. **Dashboard** → Admin → Manage Users → **Create** contestant accounts
+3. **Copy the Contest ID** from the dashboard (UUID shown after creation)
+4. **Dashboard** → Admin → Manage Users → **Create** contestant accounts
    - Password is auto-generated and shown **once** — save/share it immediately
-4. **Share** with each contestant:
+5. **Share** with each contestant:
    - Download link for the agent
+   - The **Contest ID**
    - Their login email + password
-5. Contestant installs agent → opens it → logs in → sees **"Hi, {name}"** → monitoring starts
-6. Click **"Start"** on the contest in the dashboard
-7. Monitor the **Violations** page in realtime
-8. For each flag: click → view evidence → **Confirm** or **Dismiss** (reason required)
+6. Contestant installs agent → opens it → enters **Contest ID + Email + Password** → sees **"Hi, {name}"** → monitoring starts
+7. Click **"Start"** on the contest in the dashboard
+8. Monitor the **Violations** page in realtime
+9. For each flag: click → view evidence → **Confirm** or **Dismiss** (reason required)
 
 ---
 
@@ -257,11 +264,10 @@ The agent auto-detects the model file and enables phone detection. No video or f
    cd agent/src-tauri
    BDOI_SUPABASE_URL="https://xxxxxxxx.supabase.co" \
    BDOI_SUPABASE_ANON_KEY="your-anon-key" \
-   BDOI_CONTEST_ID="your-contest-id" \
    RUST_LOG=info \
    cargo tauri dev
    ```
-5. Log in with the contestant credentials → see **"Hi, {name}"**
+5. Enter the **Contest ID** + contestant email + password → see **"Hi, {name}"**
 6. Go back to the **dashboard → Violations** → events should appear in realtime
 
 ---
@@ -316,6 +322,7 @@ bdoi-vanguard/
 # Agent (dev mode with hot reload)
 cd agent/src-tauri
 BDOI_SUPABASE_URL=... BDOI_SUPABASE_ANON_KEY=... RUST_LOG=info cargo tauri dev
+# Then enter Contest ID + email + password in the login screen
 
 # Dashboard (dev mode)
 cd dashboard
