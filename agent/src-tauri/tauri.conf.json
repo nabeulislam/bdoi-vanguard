@@ -12,8 +12,8 @@
     "windows": [
       {
         "title": "BDOI Vanguard - Anti-Cheat Monitor",
-        "width": 400,
-        "height": 300,
+        "width": 420,
+        "height": 380,
         "resizable": false,
         "center": true
       }

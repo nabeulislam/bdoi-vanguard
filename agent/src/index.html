@@ -138,7 +138,12 @@
   </div>
 
   <script>
-    const { invoke } = window.__TAURI__.core;
+    // Wait for Tauri IPC to be ready
+    function getInvoke() {
+      if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke;
+      if (window.__TAURI_INTERNALS__) return window.__TAURI_INTERNALS__.invoke;
+      return null;
+    }
 
     async function doLogin() {
       const contestId = document.getElementById('contest-input').value.trim();
@@ -149,6 +154,12 @@
 
       if (!contestId || !email || !password) {
         errorEl.textContent = 'Please fill in all fields';
+        return;
+      }
+
+      const invoke = getInvoke();
+      if (!invoke) {
+        errorEl.textContent = 'Tauri IPC not ready — please wait a moment and retry';
         return;
       }
 
@@ -169,7 +180,8 @@
           document.getElementById('monitor-view').style.display = 'block';
         }
       } catch (e) {
-        errorEl.textContent = typeof e === 'string' ? e : 'Login failed';
+        const msg = typeof e === 'string' ? e : (e && e.message ? e.message : JSON.stringify(e));
+        errorEl.textContent = msg || 'Login failed';
         btn.disabled = false;
         btn.textContent = 'Sign In';
       }
