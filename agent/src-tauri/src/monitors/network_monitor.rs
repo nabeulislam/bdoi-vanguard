@@ -146,8 +146,29 @@ impl NetworkMonitor {
 
         #[cfg(target_os = "windows")]
         {
+            // netstat -b shows process owning each connection (requires admin)
             if let Ok(output) = Command::new("netstat")
                 .args(["-b", "-n"])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    connections.push(line.to_lowercase());
+                }
+            }
+            // PowerShell: check DNS client cache for resolved domain names
+            if let Ok(output) = Command::new("powershell")
+                .args(["-NoProfile", "-Command", "Get-DnsClientCache | Select-Object -ExpandProperty Entry"])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    connections.push(line.trim().to_lowercase());
+                }
+            }
+            // Fallback: ipconfig /displaydns
+            if let Ok(output) = Command::new("ipconfig")
+                .args(["/displaydns"])
                 .output()
             {
                 let stdout = String::from_utf8_lossy(&output.stdout);

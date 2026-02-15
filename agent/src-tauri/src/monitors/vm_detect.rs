@@ -117,6 +117,17 @@ fn check_cpuid_hypervisor() -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
+        // Modern: PowerShell Get-CimInstance (replaces deprecated wmic)
+        if let Ok(output) = Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model"])
+            .output()
+        {
+            let model = String::from_utf8_lossy(&output.stdout).to_lowercase();
+            if model.contains("virtual") || model.contains("vmware") || model.contains("kvm") {
+                return Some(format!("cim_virtual_model:{}", model.trim()));
+            }
+        }
+        // Fallback: legacy wmic
         if let Ok(output) = Command::new("wmic")
             .args(["computersystem", "get", "model"])
             .output()
@@ -162,6 +173,19 @@ fn check_dmi_strings() -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
+        // Modern: PowerShell Get-CimInstance (replaces deprecated wmic)
+        if let Ok(output) = Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Get-CimInstance -ClassName Win32_BIOS | Select-Object SerialNumber, Manufacturer | Format-List"])
+            .output()
+        {
+            let bios = String::from_utf8_lossy(&output.stdout).to_lowercase();
+            for vendor in &vm_vendors {
+                if bios.contains(vendor) {
+                    return Some(format!("cim_bios_vendor:{}", vendor));
+                }
+            }
+        }
+        // Fallback: legacy wmic
         if let Ok(output) = Command::new("wmic")
             .args(["bios", "get", "serialnumber,manufacturer"])
             .output()
@@ -309,12 +333,19 @@ fn check_vm_files() -> Option<String> {
     #[cfg(target_os = "windows")]
     {
         // Check for VM-specific registry keys
-        if let Ok(output) = Command::new("reg")
-            .args(["query", r"HKLM\SOFTWARE\Oracle\VirtualBox Guest Additions"])
-            .output()
-        {
-            if output.status.success() {
-                return Some("vm_registry:vbox_guest_additions".into());
+        let vm_reg_keys = [
+            (r"HKLM\SOFTWARE\Oracle\VirtualBox Guest Additions", "vbox_guest_additions"),
+            (r"HKLM\SOFTWARE\VMware, Inc.\VMware Tools", "vmware_tools"),
+            (r"HKLM\SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters", "hyperv_guest"),
+        ];
+        for (key, label) in &vm_reg_keys {
+            if let Ok(output) = Command::new("reg")
+                .args(["query", key])
+                .output()
+            {
+                if output.status.success() {
+                    return Some(format!("vm_registry:{}", label));
+                }
             }
         }
     }

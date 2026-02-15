@@ -153,10 +153,40 @@ impl BrowserMonitor {
 
         #[cfg(target_os = "windows")]
         {
-            // Use PowerShell to enumerate windows
-            let script = r#"Get-Process | Where-Object {$_.MainWindowTitle -ne ""} | Select-Object -ExpandProperty MainWindowTitle"#;
+            // Use PowerShell to enumerate all visible window titles
+            let script = r#"
+                Add-Type @"
+                    using System;
+                    using System.Runtime.InteropServices;
+                    using System.Text;
+                    using System.Collections.Generic;
+                    public class WinEnum {
+                        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+                        [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+                        [DllImport("user32.dll")] public static extern int GetWindowTextLength(IntPtr hWnd);
+                        [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+                        [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+                        public static List<string> GetTitles() {
+                            var t = new List<string>();
+                            EnumWindows((hWnd, lp) => {
+                                if (IsWindowVisible(hWnd)) {
+                                    int len = GetWindowTextLength(hWnd);
+                                    if (len > 0) {
+                                        var sb = new StringBuilder(len + 1);
+                                        GetWindowText(hWnd, sb, sb.Capacity);
+                                        t.Add(sb.ToString());
+                                    }
+                                }
+                                return true;
+                            }, IntPtr.Zero);
+                            return t;
+                        }
+                    }
+"@
+                [WinEnum]::GetTitles() | ForEach-Object { $_ }
+            "#;
             if let Ok(output) = Command::new("powershell")
-                .args(["-NoProfile", "-Command", script])
+                .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script])
                 .output()
             {
                 let stdout = String::from_utf8_lossy(&output.stdout);
@@ -164,6 +194,21 @@ impl BrowserMonitor {
                     let t = title.trim().to_string();
                     if !t.is_empty() {
                         titles.push(t);
+                    }
+                }
+            }
+            // Fallback: simple Get-Process
+            if titles.is_empty() {
+                if let Ok(output) = Command::new("powershell")
+                    .args(["-NoProfile", "-Command", r#"Get-Process | Where-Object {$_.MainWindowTitle -ne ""} | Select-Object -ExpandProperty MainWindowTitle"#])
+                    .output()
+                {
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    for title in stdout.lines() {
+                        let t = title.trim().to_string();
+                        if !t.is_empty() {
+                            titles.push(t);
+                        }
                     }
                 }
             }
