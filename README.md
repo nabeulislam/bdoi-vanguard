@@ -53,95 +53,189 @@ CLEAN → WATCH → WARN → FLAG → BAN (admin-confirmed only)
 
 ### Step 1: Supabase Setup
 
-1. Create a project at [supabase.com](https://supabase.com) (free tier works)
-2. Go to **SQL Editor** → run both migration files in order:
-   ```
-   supabase/migrations/001_initial.sql
-   supabase/migrations/002_auth_and_admin.sql
-   ```
-3. Go to **Settings → API** → copy:
-   - Project URL (e.g. `https://abcdef.supabase.co`)
-   - `anon` public key
-   - `service_role` secret key (needed for admin user creation API)
-4. Go to **Authentication → Settings**:
-   - Disable "Enable email confirmations" (so contestant accounts work immediately)
-5. Create your first **admin user**:
-   - Go to **Authentication → Users → Add User**
-   - Create a user with your admin email/password
-   - Then in **SQL Editor**, run:
-     ```sql
-     INSERT INTO admin_users (user_id, email, name)
-     SELECT id, email, 'Admin'
-     FROM auth.users WHERE email = 'your-admin@email.com';
-     ```
+#### 1.1 Create Project
+1. Go to **[supabase.com](https://supabase.com)** → Sign up / Log in
+2. Click **"New Project"**
+3. Fill in:
+   - **Name**: `bdoi-vanguard`
+   - **Database Password**: pick a strong one (save it somewhere)
+   - **Region**: choose closest to Bangladesh (Singapore or Mumbai)
+4. Click **"Create new project"** → wait ~2 min for it to provision
 
-### Step 2: Deploy Dashboard
+#### 1.2 Run Database Migrations
+1. In your Supabase dashboard, click **"SQL Editor"** in the left sidebar
+2. Click **"New query"**
+3. Open [`supabase/migrations/001_initial.sql`](supabase/migrations/001_initial.sql) from this repo — copy the **entire file content** and paste it into the SQL editor
+4. Click **"Run"** (green play button) → you should see `Success. No rows returned`
+5. Click **"New query"** again
+6. Open [`supabase/migrations/002_auth_and_admin.sql`](supabase/migrations/002_auth_and_admin.sql) — copy and paste, then **"Run"**
+7. Verify: click **"Table Editor"** in sidebar → you should see tables: `contests`, `contestants`, `violation_logs`, `flagged_events`, `sessions`, `heartbeats`, `admin_users`
 
-**Option A: Vercel (Recommended)**
-```bash
-cd dashboard && npm install
+#### 1.3 Disable Email Confirmation
+1. Go to **Authentication** → **Providers** → **Email**
+2. **Turn OFF** "Confirm email" toggle
+3. Click **Save**
+
+> ⚠️ Important! Otherwise contestants can't log in immediately after admin creates their account.
+
+#### 1.4 Copy Your API Keys
+1. Go to **Settings** (gear icon) → **API**
+2. Copy these values — you'll need them for both dashboard and agent:
+
+| Key | Where to find | Used by |
+|-----|--------------|---------|
+| **Project URL** | `https://xxxxxxxx.supabase.co` | Dashboard + Agent |
+| **anon public key** | `eyJhbGciOiJIUzI1NiIs...` | Dashboard + Agent |
+| **service_role key** | `eyJhbGciOiJIUzI1NiIs...` | Dashboard only (keep secret!) |
+
+#### 1.5 Create Your Admin Account
+1. Go to **Authentication** → **Users** → click **"Add user"** → **"Create new user"**
+2. Enter:
+   - **Email**: your admin email (e.g. `admin@bdoi.org`)
+   - **Password**: your admin password
+   - ✅ Check **"Auto Confirm User"**
+3. Click **"Create user"**
+4. Go to **SQL Editor** → **New query** → run:
+
+```sql
+INSERT INTO admin_users (user_id, email, name)
+SELECT id, email, 'Admin'
+FROM auth.users
+WHERE email = 'admin@bdoi.org';
 ```
-1. Push to GitHub
-2. Import in [vercel.com](https://vercel.com)
-3. Set environment variables:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-   ```
-4. Deploy → you get `https://bdoi-vanguard.vercel.app`
+*(Replace `admin@bdoi.org` with the email you used)*
 
-**Option B: Self-hosted**
+5. Click **Run** → `Success. 1 row affected`
+
+✅ **Supabase is ready!**
+
+---
+
+### Step 2: Deploy Dashboard (Vercel)
+
+#### 2.1 Import Project
+1. Go to **[vercel.com](https://vercel.com)** → Sign up / Log in with GitHub
+2. Click **"Add New..."** → **"Project"**
+3. Find **`bdoi-vanguard`** in the repo list → click **"Import"**
+
+#### 2.2 Configure Build Settings
+
+| Setting | Value |
+|---------|-------|
+| **Framework Preset** | Next.js (auto-detected) |
+| **Root Directory** | Click **"Edit"** → type **`dashboard`** → click **"Continue"** |
+| **Build Command** | `npm run build` (default, leave as-is) |
+| **Output Directory** | `.next` (default, leave as-is) |
+
+#### 2.3 Set Environment Variables
+Scroll to **"Environment Variables"** and add:
+
+| Key | Value |
+|-----|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxxxxxx.supabase.co` *(your Project URL)* |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIs...` *(your anon key)* |
+
+Click **"Add"** after each one.
+
+#### 2.4 Deploy
+1. Click **"Deploy"**
+2. Wait ~1-2 minutes for the build
+3. You'll get a URL like: **`https://bdoi-vanguard.vercel.app`**
+4. Click it → you should see the **BDOI Vanguard login page**
+5. Log in with the admin email/password you created in Supabase
+
+#### 2.5 (Optional) Custom Domain
+1. In Vercel → your project → **Settings** → **Domains**
+2. Add your domain (e.g. `vanguard.bdoi.org`)
+3. Follow the DNS instructions Vercel provides
+
+#### Alternative: Self-hosted Dashboard
 ```bash
 cd dashboard
-cp .env.local.example .env.local   # edit with your Supabase creds
-npm install && npm run build && npm start
+cp .env.local.example .env.local   # edit with your Supabase URL and anon key
+npm install
+npm run build
+npm start                           # runs on port 3000
 ```
+
+---
 
 ### Step 3: Build the Agent
 
+#### 3.1 Prerequisites
+
 **Linux:**
 ```bash
-# Install deps
-sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+# Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Build
-cd agent/src-tauri
-export BDOI_SUPABASE_URL="https://your-project.supabase.co"
-export BDOI_SUPABASE_ANON_KEY="your-anon-key"
-export BDOI_CONTEST_ID="your-contest-id"
-cargo tauri build
+# Tauri system dependencies
+sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev pkg-config
 
-# Outputs:
-#   target/release/bundle/deb/bdoi-vanguard_0.1.0_amd64.deb
-#   target/release/bundle/appimage/bdoi-vanguard_0.1.0_amd64.AppImage
+# Monitor dependencies (for window title + clipboard detection)
+sudo apt install wmctrl xdotool xclip
 ```
 
 **Windows:**
-```bash
-# Install: Visual Studio C++ Build Tools + WebView2
-cd agent\src-tauri
-set BDOI_SUPABASE_URL=https://your-project.supabase.co
-set BDOI_SUPABASE_ANON_KEY=your-anon-key
-set BDOI_CONTEST_ID=your-contest-id
-cargo tauri build
+- Install [Rust](https://rustup.rs)
+- Install [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (select "Desktop development with C++")
+- [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually pre-installed on Windows 10/11)
 
-# Outputs:
-#   target\release\bundle\msi\bdoi-vanguard_0.1.0_x64.msi
-#   target\release\bundle\nsis\bdoi-vanguard_0.1.0_x64-setup.exe
+#### 3.2 Build
+
+**Linux:**
+```bash
+cd agent/src-tauri
+export BDOI_SUPABASE_URL="https://xxxxxxxx.supabase.co"
+export BDOI_SUPABASE_ANON_KEY="your-anon-key"
+export BDOI_CONTEST_ID="your-contest-id"
+
+cargo tauri build
 ```
 
-### Step 4: Distribute & Run Contest
+Output files:
+```
+target/release/bundle/deb/bdoi-vanguard_0.1.0_amd64.deb
+target/release/bundle/appimage/bdoi-vanguard_0.1.0_amd64.AppImage
+```
 
-1. Upload `.deb` / `.AppImage` / `.msi` / `.exe` to GitHub Releases
-2. In Dashboard → **Admin → Manage Contests** → create a contest
-3. In Dashboard → **Admin → Manage Users** → create contestant accounts
-4. Share credentials (email + auto-generated password) with contestants
-5. Contestants download the agent → log in → "Hi, Name" → monitoring starts
-6. Click **Start** on the contest
-7. Monitor **Dashboard → Violations** in realtime
-8. Review flags → view evidence → Confirm/Dismiss with reason
+**Windows:**
+```cmd
+cd agent\src-tauri
+set BDOI_SUPABASE_URL=https://xxxxxxxx.supabase.co
+set BDOI_SUPABASE_ANON_KEY=your-anon-key
+set BDOI_CONTEST_ID=your-contest-id
+
+cargo tauri build
+```
+
+Output files:
+```
+target\release\bundle\msi\bdoi-vanguard_0.1.0_x64.msi
+target\release\bundle\nsis\bdoi-vanguard_0.1.0_x64-setup.exe
+```
+
+---
+
+### Step 4: Run a Contest
+
+1. **Upload** agent installers (`.deb`, `.AppImage`, `.msi`, `.exe`) to GitHub Releases or a download page
+2. **Dashboard** → Admin → Manage Contests → **Create** a new contest
+3. **Dashboard** → Admin → Manage Users → **Create** contestant accounts
+   - Password is auto-generated and shown **once** — save/share it immediately
+4. **Share** with each contestant:
+   - Download link for the agent
+   - Their login email + password
+5. Contestant installs agent → opens it → logs in → sees **"Hi, {name}"** → monitoring starts
+6. Click **"Start"** on the contest in the dashboard
+7. Monitor the **Violations** page in realtime
+8. For each flag: click → view evidence → **Confirm** or **Dismiss** (reason required)
+
+---
 
 ### Phone Detection (Optional)
+
+To enable webcam-based phone detection, place a YOLOv8-nano ONNX model in the agent:
 
 ```bash
 pip install ultralytics
@@ -149,17 +243,84 @@ yolo export model=yolov8n.pt format=onnx
 cp yolov8n.onnx agent/src-tauri/models/
 ```
 
+The agent auto-detects the model file and enables phone detection. No video or frames ever leave the contestant's device — only detection metadata (timestamp, confidence, bounding box) is reported.
+
+---
+
+## ✅ Verify Everything Works
+
+1. Open your **dashboard URL** → log in as admin
+2. Go to **Admin → Manage Contests** → create a test contest
+3. Go to **Admin → Manage Users** → create a test contestant (save the password!)
+4. Open the **agent** on your machine:
+   ```bash
+   cd agent/src-tauri
+   BDOI_SUPABASE_URL="https://xxxxxxxx.supabase.co" \
+   BDOI_SUPABASE_ANON_KEY="your-anon-key" \
+   BDOI_CONTEST_ID="your-contest-id" \
+   RUST_LOG=info \
+   cargo tauri dev
+   ```
+5. Log in with the contestant credentials → see **"Hi, {name}"**
+6. Go back to the **dashboard → Violations** → events should appear in realtime
+
+---
+
+## Project Structure
+
+```
+bdoi-vanguard/
+├── agent/                        # Rust + Tauri desktop agent
+│   ├── src-tauri/
+│   │   ├── src/
+│   │   │   ├── main.rs           # Entry point
+│   │   │   ├── lib.rs            # Engine + Tauri commands (login, status)
+│   │   │   ├── auth.rs           # Supabase Auth (login/session)
+│   │   │   ├── config.rs         # Agent configuration
+│   │   │   ├── evidence.rs       # Event types + evidence hashing
+│   │   │   ├── reporter.rs       # Supabase event reporter
+│   │   │   └── monitors/         # 7 detection modules
+│   │   │       ├── vm_detect.rs
+│   │   │       ├── process_monitor.rs
+│   │   │       ├── browser_monitor.rs
+│   │   │       ├── network_monitor.rs
+│   │   │       ├── clipboard_monitor.rs
+│   │   │       ├── focus_monitor.rs
+│   │   │       └── phone_detect.rs
+│   │   ├── models/               # ML models (YOLOv8n.onnx)
+│   │   └── tauri.conf.json       # Build config (Linux + Windows)
+│   └── src/index.html            # Login → "Hi, Name" → Monitor UI
+├── dashboard/                    # Next.js admin dashboard
+│   └── src/
+│       ├── app/
+│       │   ├── page.tsx          # Live dashboard home
+│       │   ├── login/            # Admin login
+│       │   ├── violations/       # Violation review + verdict system
+│       │   ├── contestants/      # Contestant status overview
+│       │   ├── sessions/         # Agent session tracking
+│       │   └── admin/
+│       │       ├── users/        # Create/manage contestant accounts
+│       │       └── contests/     # Create/manage contests
+│       ├── components/
+│       │   ├── Sidebar.tsx       # Navigation sidebar
+│       │   └── AuthGuard.tsx     # Auth redirect guard
+│       └── lib/supabase.ts       # Supabase client + types
+└── supabase/migrations/          # Database schema
+    ├── 001_initial.sql           # Tables, indexes, RLS, realtime
+    └── 002_auth_and_admin.sql    # Auth integration, admin users
+```
+
 ## Development
 
 ```bash
-# Agent (dev mode)
+# Agent (dev mode with hot reload)
 cd agent/src-tauri
 BDOI_SUPABASE_URL=... BDOI_SUPABASE_ANON_KEY=... RUST_LOG=info cargo tauri dev
 
 # Dashboard (dev mode)
 cd dashboard
-cp .env.local.example .env.local
-npm run dev
+cp .env.local.example .env.local  # edit with Supabase creds
+npm run dev                        # http://localhost:3000
 ```
 
 ## License
