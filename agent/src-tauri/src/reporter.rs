@@ -70,7 +70,10 @@ impl Reporter {
             .header("apikey", &self.config.supabase_anon_key)
             .header(
                 "Authorization",
-                format!("Bearer {}", self.config.supabase_anon_key),
+                format!(
+                    "Bearer {}",
+                    self.config.access_token.as_deref().unwrap_or(&self.config.supabase_anon_key)
+                ),
             )
             .header("Content-Type", "application/json")
             .header("Prefer", "return=minimal")

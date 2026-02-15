@@ -1,27 +1,34 @@
+pub mod auth;
 pub mod config;
 pub mod evidence;
 pub mod monitors;
 pub mod reporter;
 
+use auth::AuthSession;
 use config::AgentConfig;
 use evidence::{DetectionEvent, MonitorSource, Severity};
 use monitors::Monitor;
 use reporter::{create_reporter, ReporterHandle};
 use serde_json::json;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use log::info;
+
+/// Shared application state accessible from Tauri commands
+pub struct AppState {
+    pub config: AgentConfig,
+    pub session: Mutex<Option<AuthSession>>,
+    pub monitoring: Mutex<bool>,
+}
 
 /// Orchestrates all monitors and the reporting pipeline
 pub struct AntiCheatEngine {
-    config: Arc<AgentConfig>,
     monitors: Vec<Box<dyn Monitor>>,
     reporter: ReporterHandle,
+    start_time: std::time::Instant,
 }
 
 impl AntiCheatEngine {
-    pub fn new(config: AgentConfig, reporter: ReporterHandle) -> Self {
-        let config = Arc::new(config);
-
+    pub fn new(reporter: ReporterHandle) -> Self {
         let monitors: Vec<Box<dyn Monitor>> = vec![
             Box::new(monitors::vm_detect::VmDetector::new()),
             Box::new(monitors::process_monitor::ProcessMonitor::new()),
@@ -33,13 +40,12 @@ impl AntiCheatEngine {
         ];
 
         Self {
-            config,
             monitors,
             reporter,
+            start_time: std::time::Instant::now(),
         }
     }
 
-    /// Run a single scan cycle across all monitors
     pub async fn scan_cycle(&mut self) {
         for monitor in &mut self.monitors {
             let events = monitor.scan();
@@ -49,7 +55,6 @@ impl AntiCheatEngine {
         }
     }
 
-    /// Send a heartbeat to prove the agent is still running
     pub async fn heartbeat(&self) {
         let event = DetectionEvent::new(
             MonitorSource::Heartbeat,
@@ -57,7 +62,7 @@ impl AntiCheatEngine {
             1.0,
             "Agent heartbeat — monitoring active".into(),
             json!({
-                "uptime_secs": 0, // TODO: track actual uptime
+                "uptime_secs": self.start_time.elapsed().as_secs(),
                 "monitors_active": self.monitors.len(),
             }),
         );
@@ -65,65 +70,63 @@ impl AntiCheatEngine {
     }
 }
 
-// Tauri commands exposed to the frontend
+// ── Tauri commands ──────────────────────────────────────────────────
 
 #[tauri::command]
-fn get_status() -> serde_json::Value {
-    json!({
-        "status": "monitoring",
-        "version": env!("CARGO_PKG_VERSION"),
-    })
-}
+async fn login(
+    email: String,
+    password: String,
+    state: tauri::State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    let session = auth::login(
+        &state.config.supabase_url,
+        &state.config.supabase_anon_key,
+        &email,
+        &password,
+    )
+    .await?;
 
-#[tauri::command]
-fn get_config() -> serde_json::Value {
-    let config = AgentConfig::from_env();
-    json!({
-        "contest_id": config.contest_id,
-        "contestant_id": config.contestant_id,
-        "contestant_name": config.contestant_name,
-        "scan_interval": config.scan_interval_secs,
-    })
-}
+    let name = session.user.display_name();
+    let user_id = session.user.id.clone();
 
-/// Build and run the Tauri application with the anti-cheat engine
-pub fn run() {
-    env_logger::init();
-    info!("BDOI Vanguard Agent starting...");
+    // Store session
+    *state.session.lock().unwrap() = Some(session.clone());
 
-    let config = AgentConfig::from_env();
-    let scan_interval = config.scan_interval_secs;
-    let heartbeat_interval = config.heartbeat_interval_secs;
+    // Start monitoring in background
+    let config = state.config.clone();
+    let access_token = session.access_token.clone();
+    let uid = user_id.clone();
+    let uname = name.clone();
 
-    let (reporter, reporter_handle) = create_reporter(Arc::new(config.clone()));
+    let already_monitoring = {
+        let m = state.monitoring.lock().unwrap();
+        *m
+    };
 
-    // Spawn the reporter task
-    let reporter_handle_clone = reporter_handle.clone();
+    if !already_monitoring {
+        *state.monitoring.lock().unwrap() = true;
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![get_status, get_config])
-        .setup(move |_app| {
-            // Start the reporter in the background
-            let rt = tokio::runtime::Handle::current();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
+            rt.block_on(async move {
+                let mut cfg = config.clone();
+                cfg.contestant_id = uid;
+                cfg.contestant_name = uname;
+                cfg.access_token = Some(access_token);
 
-            rt.spawn(async move {
-                reporter.run().await;
-            });
+                let (reporter, reporter_handle) = create_reporter(Arc::new(cfg.clone()));
 
-            // Start the scan loop
-            let handle = reporter_handle_clone;
-            rt.spawn(async move {
-                let mut engine = AntiCheatEngine::new(
-                    AgentConfig::from_env(),
-                    handle,
-                );
+                tokio::spawn(async move {
+                    reporter.run().await;
+                });
 
-                let scan_dur = std::time::Duration::from_secs(scan_interval);
-                let heartbeat_dur = std::time::Duration::from_secs(heartbeat_interval);
+                let mut engine = AntiCheatEngine::new(reporter_handle);
+
+                let scan_dur = std::time::Duration::from_secs(cfg.scan_interval_secs);
+                let heartbeat_dur = std::time::Duration::from_secs(cfg.heartbeat_interval_secs);
                 let mut last_heartbeat = std::time::Instant::now();
 
-                info!("Anti-cheat engine started — scanning every {}s", scan_interval);
+                info!("Monitoring started for {}", cfg.contestant_name);
 
                 loop {
                     engine.scan_cycle().await;
@@ -136,9 +139,64 @@ pub fn run() {
                     tokio::time::sleep(scan_dur).await;
                 }
             });
+        });
+    }
 
-            Ok(())
-        })
+    Ok(json!({
+        "success": true,
+        "name": name,
+        "user_id": user_id,
+    }))
+}
+
+#[tauri::command]
+fn get_status(state: tauri::State<'_, Arc<AppState>>) -> serde_json::Value {
+    let session = state.session.lock().unwrap();
+    let monitoring = state.monitoring.lock().unwrap();
+
+    match session.as_ref() {
+        Some(s) => json!({
+            "authenticated": true,
+            "monitoring": *monitoring,
+            "name": s.user.display_name(),
+            "email": s.user.email,
+            "user_id": s.user.id,
+            "version": env!("CARGO_PKG_VERSION"),
+        }),
+        None => json!({
+            "authenticated": false,
+            "monitoring": false,
+            "version": env!("CARGO_PKG_VERSION"),
+        }),
+    }
+}
+
+#[tauri::command]
+fn get_config(state: tauri::State<'_, Arc<AppState>>) -> serde_json::Value {
+    json!({
+        "contest_id": state.config.contest_id,
+        "scan_interval": state.config.scan_interval_secs,
+        "supabase_url": state.config.supabase_url,
+    })
+}
+
+// ── App entry ───────────────────────────────────────────────────────
+
+pub fn run() {
+    env_logger::init();
+    info!("BDOI Vanguard Agent starting...");
+
+    let config = AgentConfig::from_env();
+    let app_state = Arc::new(AppState {
+        config,
+        session: Mutex::new(None),
+        monitoring: Mutex::new(false),
+    });
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .manage(app_state)
+        .invoke_handler(tauri::generate_handler![login, get_status, get_config])
         .run(tauri::generate_context!())
         .expect("error while running BDOI Vanguard");
 }

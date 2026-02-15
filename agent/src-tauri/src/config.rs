@@ -8,6 +8,8 @@ pub struct AgentConfig {
     pub contest_id: String,
     pub contestant_id: String,
     pub contestant_name: String,
+    /// Auth token from Supabase login
+    pub access_token: Option<String>,
     /// How often monitors run their checks (seconds)
     pub scan_interval_secs: u64,
     /// How often heartbeats are sent (seconds)
@@ -31,9 +33,10 @@ impl AgentConfig {
             contest_id: std::env::var("BDOI_CONTEST_ID")
                 .unwrap_or_else(|_| "default".into()),
             contestant_id: std::env::var("BDOI_CONTESTANT_ID")
-                .unwrap_or_else(|_| uuid::Uuid::new_v4().to_string()),
+                .unwrap_or_else(|_| "unknown".into()),
             contestant_name: std::env::var("BDOI_CONTESTANT_NAME")
                 .unwrap_or_else(|_| "Unknown".into()),
+            access_token: None,
             scan_interval_secs: 10,
             heartbeat_interval_secs: 30,
             evidence_dir,

@@ -15,35 +15,70 @@
       justify-content: center;
       height: 100vh;
       user-select: none;
+      overflow: hidden;
     }
-    .container {
-      text-align: center;
-      padding: 2rem;
-    }
+    .container { text-align: center; padding: 2rem; width: 100%; }
     .logo {
-      font-size: 2rem;
+      font-size: 1.6rem;
       font-weight: 800;
       background: linear-gradient(135deg, #00d4ff, #7b2ff7);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.3rem;
     }
-    .subtitle {
+    .subtitle { font-size: 0.75rem; color: #555; margin-bottom: 1.5rem; }
+
+    /* Login form */
+    .login-form { max-width: 280px; margin: 0 auto; }
+    .input-group { margin-bottom: 0.75rem; text-align: left; }
+    .input-group label { display: block; font-size: 0.7rem; color: #888; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .input-group input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: #141414;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
       font-size: 0.85rem;
-      color: #888;
-      margin-bottom: 2rem;
+      outline: none;
+      transition: border-color 0.2s;
     }
+    .input-group input:focus { border-color: #00d4ff; }
+    .btn {
+      width: 100%;
+      padding: 0.6rem;
+      background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .error { color: #ff4444; font-size: 0.75rem; margin-top: 0.5rem; }
+
+    /* Monitoring view */
+    .monitoring { display: none; }
+    .greeting {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+    .greeting span { color: #00d4ff; }
     .status {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      font-size: 1.1rem;
-      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+      margin: 1rem 0;
     }
     .status-dot {
-      width: 12px;
-      height: 12px;
+      width: 10px; height: 10px;
       border-radius: 50%;
       background: #00ff88;
       animation: pulse 2s ease-in-out infinite;
@@ -52,46 +87,97 @@
       0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
       50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(0,255,136,0); }
     }
-    .info {
-      font-size: 0.8rem;
-      color: #666;
-      line-height: 1.6;
+    .info { font-size: 0.7rem; color: #555; line-height: 1.8; }
+    .info .val { color: #888; }
+    .shield {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
     }
-    .info span { color: #aaa; }
-    #contest-id, #contestant { color: #00d4ff; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">BDOI VANGUARD</div>
-    <div class="subtitle">Anti-Cheat Monitor v0.1.0</div>
-    <div class="status">
-      <div class="status-dot"></div>
-      <span>Monitoring Active</span>
+    <div class="subtitle">Anti-Cheat Monitor</div>
+
+    <!-- Login View -->
+    <div id="login-view" class="login-form">
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="contestant@bdoi.org" autocomplete="email" />
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <button class="btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div id="error" class="error"></div>
     </div>
-    <div class="info">
-      <div>Contest: <span id="contest-id">—</span></div>
-      <div>Contestant: <span id="contestant">—</span></div>
-      <div style="margin-top: 1rem; color: #444;">
-        This window can be minimized.<br>
-        Do not close it during the contest.
+
+    <!-- Monitoring View -->
+    <div id="monitor-view" class="monitoring">
+      <div class="shield">🛡️</div>
+      <div class="greeting">Hi, <span id="user-name">—</span></div>
+      <div class="status">
+        <div class="status-dot"></div>
+        <span>Monitoring Active</span>
+      </div>
+      <div class="info">
+        <div>Contest: <span class="val" id="contest-id">—</span></div>
+        <div>Session: <span class="val" id="session-id">—</span></div>
+        <div style="margin-top:0.8rem; color:#333;">
+          This window can be minimized.<br>
+          Do not close it during the contest.
+        </div>
       </div>
     </div>
   </div>
+
   <script>
     const { invoke } = window.__TAURI__.core;
 
-    async function init() {
+    async function doLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error');
+      const btn = document.getElementById('login-btn');
+
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter email and password';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+      errorEl.textContent = '';
+
       try {
-        const config = await invoke('get_config');
-        document.getElementById('contest-id').textContent = config.contest_id;
-        document.getElementById('contestant').textContent = config.contestant_name;
+        const result = await invoke('login', { email, password });
+        if (result.success) {
+          document.getElementById('user-name').textContent = result.name;
+          document.getElementById('session-id').textContent = result.user_id.slice(0, 8) + '...';
+
+          // Load config
+          const config = await invoke('get_config');
+          document.getElementById('contest-id').textContent = config.contest_id;
+
+          // Switch views
+          document.getElementById('login-view').style.display = 'none';
+          document.getElementById('monitor-view').style.display = 'block';
+        }
       } catch (e) {
-        console.error('Failed to load config:', e);
+        errorEl.textContent = typeof e === 'string' ? e : 'Login failed';
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
       }
     }
 
-    init();
+    // Allow Enter key to submit
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && document.getElementById('login-view').style.display !== 'none') {
+        doLogin();
+      }
+    });
   </script>
 </body>
 </html>
