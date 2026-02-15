@@ -8,13 +8,9 @@ pub struct AgentConfig {
     pub contest_id: String,
     pub contestant_id: String,
     pub contestant_name: String,
-    /// Auth token from Supabase login
     pub access_token: Option<String>,
-    /// How often monitors run their checks (seconds)
     pub scan_interval_secs: u64,
-    /// How often heartbeats are sent (seconds)
     pub heartbeat_interval_secs: u64,
-    /// Local evidence storage path
     pub evidence_dir: PathBuf,
 }
 
@@ -25,17 +21,23 @@ impl AgentConfig {
             .join("bdoi-vanguard")
             .join("evidence");
 
+        // Compile-time env vars (baked into binary) with runtime fallback
+        let supabase_url = option_env!("BDOI_SUPABASE_URL")
+            .map(String::from)
+            .or_else(|| std::env::var("BDOI_SUPABASE_URL").ok())
+            .unwrap_or_else(|| "https://your-project.supabase.co".into());
+
+        let supabase_anon_key = option_env!("BDOI_SUPABASE_ANON_KEY")
+            .map(String::from)
+            .or_else(|| std::env::var("BDOI_SUPABASE_ANON_KEY").ok())
+            .unwrap_or_else(|| "your-anon-key".into());
+
         Self {
-            supabase_url: std::env::var("BDOI_SUPABASE_URL")
-                .unwrap_or_else(|_| "https://your-project.supabase.co".into()),
-            supabase_anon_key: std::env::var("BDOI_SUPABASE_ANON_KEY")
-                .unwrap_or_else(|_| "your-anon-key".into()),
-            contest_id: std::env::var("BDOI_CONTEST_ID")
-                .unwrap_or_else(|_| "default".into()),
-            contestant_id: std::env::var("BDOI_CONTESTANT_ID")
-                .unwrap_or_else(|_| "unknown".into()),
-            contestant_name: std::env::var("BDOI_CONTESTANT_NAME")
-                .unwrap_or_else(|_| "Unknown".into()),
+            supabase_url,
+            supabase_anon_key,
+            contest_id: String::new(),
+            contestant_id: String::new(),
+            contestant_name: String::new(),
             access_token: None,
             scan_interval_secs: 10,
             heartbeat_interval_secs: 30,

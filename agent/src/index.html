@@ -7,138 +7,275 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0a0a0a;
-      color: #e0e0e0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #05070a;
+      color: #c8ccd4;
       height: 100vh;
-      user-select: none;
       overflow: hidden;
+      user-select: none;
     }
-    .container { text-align: center; padding: 2rem; width: 100%; }
+
+    /* Subtle animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(0,180,255,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 50%, rgba(123,47,247,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .app { height: 100vh; display: flex; flex-direction: column; position: relative; z-index: 1; }
+
+    /* Title bar area */
+    .titlebar {
+      padding: 14px 20px 0;
+      text-align: center;
+    }
     .logo {
-      font-size: 1.6rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, #00b4ff, #8b5cf6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 0.3rem;
     }
-    .subtitle { font-size: 0.75rem; color: #555; margin-bottom: 1.5rem; }
 
-    /* Login form */
-    .login-form { max-width: 280px; margin: 0 auto; }
-    .input-group { margin-bottom: 0.75rem; text-align: left; }
-    .input-group label { display: block; font-size: 0.7rem; color: #888; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .input-group input {
-      width: 100%;
-      padding: 0.5rem 0.75rem;
-      background: #141414;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 0.85rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .input-group input:focus { border-color: #00d4ff; }
-    .btn {
-      width: 100%;
-      padding: 0.6rem;
-      background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: opacity 0.2s;
-    }
-    .btn:hover { opacity: 0.9; }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .error { color: #ff4444; font-size: 0.75rem; margin-top: 0.5rem; }
-
-    /* Monitoring view */
-    .monitoring { display: none; }
-    .greeting {
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin-bottom: 0.3rem;
-    }
-    .greeting span { color: #00d4ff; }
-    .status {
+    /* Login View */
+    .login-view {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      font-size: 0.95rem;
-      margin: 1rem 0;
+      padding: 0 32px 20px;
     }
-    .status-dot {
-      width: 10px; height: 10px;
+    .login-card { width: 100%; max-width: 320px; }
+    .login-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .login-header .icon {
+      width: 48px; height: 48px;
+      margin: 0 auto 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(0,180,255,0.15), rgba(123,47,247,0.15));
+      border: 1px solid rgba(0,180,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .login-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e4e7ed;
+    }
+    .login-header p {
+      font-size: 12px;
+      color: #555b66;
+      margin-top: 4px;
+    }
+
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 5px;
+      letter-spacing: 0.3px;
+    }
+    .field input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid #1e2330;
+      border-radius: 8px;
+      color: #e4e7ed;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input::placeholder { color: #3a3f4b; }
+    .field input:focus {
+      border-color: #00b4ff;
+      box-shadow: 0 0 0 3px rgba(0,180,255,0.08);
+    }
+    .field input.mono {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 11.5px;
+      letter-spacing: 0.5px;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 11px;
+      margin-top: 16px;
+      background: linear-gradient(135deg, #00b4ff, #8b5cf6);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .login-btn:hover { opacity: 0.92; }
+    .login-btn:active { transform: scale(0.98); }
+    .login-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 12px;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 16px;
+    }
+
+    /* Monitor View */
+    .monitor-view {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 32px 20px;
+      text-align: center;
+    }
+
+    .shield-icon {
+      width: 72px; height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,180,255,0.1));
+      border: 1px solid rgba(0,255,136,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin-bottom: 16px;
+      animation: shield-glow 3s ease-in-out infinite;
+    }
+    @keyframes shield-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,136,0.1); }
+      50% { box-shadow: 0 0 20px 4px rgba(0,255,136,0.08); }
+    }
+
+    .greeting {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e4e7ed;
+      margin-bottom: 4px;
+    }
+    .greeting span { color: #00b4ff; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.2);
+      font-size: 12px;
+      font-weight: 500;
+      color: #00ff88;
+      margin: 12px 0 20px;
+    }
+    .status-badge .dot {
+      width: 7px; height: 7px;
       border-radius: 50%;
       background: #00ff88;
-      animation: pulse 2s ease-in-out infinite;
+      animation: blink 2s ease-in-out infinite;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
-      50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(0,255,136,0); }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
     }
-    .info { font-size: 0.7rem; color: #555; line-height: 1.8; }
-    .info .val { color: #888; }
-    .shield {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
+
+    .meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      max-width: 280px;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid #1a1e28;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+    .meta-row .label { color: #555b66; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+    .meta-row .value { color: #8b90a0; font-family: 'SF Mono', monospace; font-size: 10.5px; }
+
+    .hint {
+      margin-top: 20px;
+      font-size: 11px;
+      color: #2a2e38;
+      line-height: 1.6;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">BDOI VANGUARD</div>
-    <div class="subtitle">Anti-Cheat Monitor</div>
-
-    <!-- Login View -->
-    <div id="login-view" class="login-form">
-      <div class="input-group">
-        <label>Contest ID</label>
-        <input type="text" id="contest-input" placeholder="paste contest ID from admin" autocomplete="off" spellcheck="false" style="font-family:monospace;font-size:0.75rem;" />
-      </div>
-      <div class="input-group">
-        <label>Email</label>
-        <input type="email" id="email" placeholder="contestant@bdoi.org" autocomplete="email" />
-      </div>
-      <div class="input-group">
-        <label>Password</label>
-        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
-      </div>
-      <button class="btn" id="login-btn" onclick="doLogin()">Sign In</button>
-      <div id="error" class="error"></div>
+  <div class="app">
+    <div class="titlebar">
+      <div class="logo">BDOI VANGUARD</div>
     </div>
 
-    <!-- Monitoring View -->
-    <div id="monitor-view" class="monitoring">
-      <div class="shield">🛡️</div>
-      <div class="greeting">Hi, <span id="user-name">—</span></div>
-      <div class="status">
-        <div class="status-dot"></div>
-        <span>Monitoring Active</span>
-      </div>
-      <div class="info">
-        <div>Contest: <span class="val" id="contest-id">—</span></div>
-        <div>Session: <span class="val" id="session-id">—</span></div>
-        <div style="margin-top:0.8rem; color:#333;">
-          This window can be minimized.<br>
-          Do not close it during the contest.
+    <!-- Login -->
+    <div id="login-view" class="login-view">
+      <div class="login-card">
+        <div class="login-header">
+          <div class="icon">🛡</div>
+          <h2>Contest Sign In</h2>
+          <p>Enter your credentials to start monitoring</p>
         </div>
+
+        <div class="field">
+          <label>Contest ID</label>
+          <input type="text" id="contest-input" class="mono" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="email" placeholder="you@bdoi.org" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+
+        <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In & Start Monitoring</button>
+        <div id="error" class="error-msg"></div>
+      </div>
+    </div>
+
+    <!-- Monitoring -->
+    <div id="monitor-view" class="monitor-view">
+      <div class="shield-icon">🛡️</div>
+      <div class="greeting">Hi, <span id="user-name">—</span></div>
+      <div class="status-badge">
+        <div class="dot"></div>
+        Monitoring Active
+      </div>
+      <div class="meta">
+        <div class="meta-row">
+          <span class="label">Contest</span>
+          <span class="value" id="contest-id">—</span>
+        </div>
+        <div class="meta-row">
+          <span class="label">Session</span>
+          <span class="value" id="session-id">—</span>
+        </div>
+      </div>
+      <div class="hint">
+        You can minimize this window.<br>
+        Do not close it during the contest.
       </div>
     </div>
   </div>
 
   <script>
-    // Wait for Tauri IPC to be ready
     function getInvoke() {
       if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke;
       if (window.__TAURI_INTERNALS__) return window.__TAURI_INTERNALS__.invoke;
@@ -159,35 +296,31 @@
 
       const invoke = getInvoke();
       if (!invoke) {
-        errorEl.textContent = 'Tauri IPC not ready — please wait a moment and retry';
+        errorEl.textContent = 'App not ready — please wait a moment and retry';
         return;
       }
 
       btn.disabled = true;
-      btn.textContent = 'Signing in...';
+      btn.textContent = 'Connecting...';
       errorEl.textContent = '';
 
       try {
         const result = await invoke('login', { contestId, email, password });
         if (result.success) {
           document.getElementById('user-name').textContent = result.name;
-          document.getElementById('session-id').textContent = result.user_id.slice(0, 8) + '...';
-
-          document.getElementById('contest-id').textContent = contestId;
-
-          // Switch views
+          document.getElementById('session-id').textContent = result.user_id.slice(0, 8) + '…';
+          document.getElementById('contest-id').textContent = contestId.slice(0, 8) + '…';
           document.getElementById('login-view').style.display = 'none';
-          document.getElementById('monitor-view').style.display = 'block';
+          document.getElementById('monitor-view').style.display = 'flex';
         }
       } catch (e) {
         const msg = typeof e === 'string' ? e : (e && e.message ? e.message : JSON.stringify(e));
         errorEl.textContent = msg || 'Login failed';
         btn.disabled = false;
-        btn.textContent = 'Sign In';
+        btn.textContent = 'Sign In & Start Monitoring';
       }
     }
 
-    // Allow Enter key to submit
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && document.getElementById('login-view').style.display !== 'none') {
         doLogin();
