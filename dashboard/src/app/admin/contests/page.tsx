@@ -16,7 +16,7 @@ interface Contest {
 export default function AdminContestsPage() {
   const [contests, setContests] = useState<Contest[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", duration: "180" });
+  const [form, setForm] = useState({ name: "", description: "", duration: "180", start_time: "" });
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export default function AdminContestsPage() {
     setCreating(true);
 
     const mins = parseInt(form.duration) || 180;
-    const start = new Date();
+    const start = form.start_time ? new Date(form.start_time) : new Date();
     const end = new Date(start.getTime() + mins * 60 * 1000);
 
     const { error } = await supabase.from("contests").insert({
@@ -51,7 +51,7 @@ export default function AdminContestsPage() {
     if (error) {
       alert("Error: " + error.message);
     } else {
-      setForm({ name: "", description: "", duration: "180" });
+      setForm({ name: "", description: "", duration: "180", start_time: "" });
       setShowForm(false);
     }
     setCreating(false);
@@ -134,6 +134,15 @@ export default function AdminContestsPage() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="w-full bg-black/30 border border-vanguard-border rounded px-3 py-2 text-sm text-white outline-none focus:border-vanguard-accent"
                 placeholder="Optional description"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 uppercase mb-1">Start Time (leave blank = use Start Now)</label>
+              <input
+                type="datetime-local"
+                value={form.start_time}
+                onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                className="w-full bg-black/30 border border-vanguard-border rounded px-3 py-2 text-sm text-white outline-none focus:border-vanguard-accent"
               />
             </div>
             <div>
