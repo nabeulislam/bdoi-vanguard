@@ -53,40 +53,27 @@ export default function AdminUsersPage() {
 
     const password = form.password || generatePassword();
 
-    // Create auth user via Supabase Admin (uses service role if available, otherwise edge function)
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: form.email,
-      password,
-      email_confirm: true,
-      user_metadata: { name: form.name, role: "contestant" },
+    // Call server-side API route (has service_role key)
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch("/api/admin/create-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token || ""}`,
+      },
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        password,
+        contest_id: form.contest_id,
+      }),
     });
 
-    if (authError) {
-      // Fallback: if admin API not available, create contestant record only
-      // The admin will need to use Supabase dashboard to create auth users
-      const { error: insertError } = await supabase.from("contestants").insert({
-        name: form.name,
-        email: form.email,
-        contest_id: form.contest_id || null,
-        password_temp: password,
-        status: "CLEAN",
-      });
-
-      if (insertError) {
-        alert("Error: " + insertError.message);
-        setCreating(false);
-        return;
-      }
-    } else if (authData?.user) {
-      // Link auth user to contestant record
-      await supabase.from("contestants").insert({
-        name: form.name,
-        email: form.email,
-        contest_id: form.contest_id || null,
-        user_id: authData.user.id,
-        password_temp: password,
-        status: "CLEAN",
-      });
+    const result = await res.json();
+    if (!res.ok) {
+      alert("Error: " + (result.error || "Failed to create user"));
+      setCreating(false);
+      return;
     }
 
     setCreatedUser({ email: form.email, password });

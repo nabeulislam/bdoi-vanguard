@@ -10,11 +10,10 @@
       font-family: sans-serif;
       background: #111;
       color: #ddd;
-      height: 100vh;
-      overflow: hidden;
+      min-height: 100vh;
     }
     .app {
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -22,7 +21,6 @@
       padding: 24px;
     }
 
-    /* Logo */
     .logo {
       font-size: 14px;
       font-weight: 700;
@@ -31,119 +29,100 @@
       margin-bottom: 20px;
     }
 
-    /* Login */
-    #login-view {
-      width: 100%;
-      max-width: 300px;
-    }
-    .form-title {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+    /* ── Login ── */
+    #login-view { width: 100%; max-width: 300px; }
+    .form-title { text-align: center; margin-bottom: 20px; }
     .form-title .icon { font-size: 36px; display: block; margin-bottom: 8px; }
     .form-title h2 { font-size: 16px; font-weight: 600; color: #eee; }
     .form-title p { font-size: 12px; color: #666; margin-top: 4px; }
 
     .field { margin-bottom: 14px; }
     .field label {
-      display: block;
-      font-size: 11px;
-      font-weight: 600;
-      color: #777;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      display: block; font-size: 11px; font-weight: 600;
+      color: #777; margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.5px;
     }
     .field input {
-      display: block;
-      width: 100%;
-      padding: 10px 12px;
-      background: #1a1a1a;
-      border: 2px solid #333;
-      border-radius: 8px;
-      color: #eee;
-      font-size: 14px;
-      font-family: sans-serif;
-      outline: none;
+      display: block; width: 100%; padding: 10px 12px;
+      background: #1a1a1a; border: 2px solid #333;
+      border-radius: 8px; color: #eee; font-size: 14px;
+      font-family: sans-serif; outline: none;
     }
     .field input:focus { border-color: #0af; }
     .field input.mono { font-family: monospace; font-size: 12px; }
 
     .btn-login {
-      display: block;
-      width: 100%;
-      padding: 12px;
-      margin-top: 18px;
-      background: #0af;
-      border: none;
-      border-radius: 8px;
-      color: #000;
-      font-size: 14px;
-      font-weight: 700;
-      font-family: sans-serif;
-      cursor: pointer;
-      letter-spacing: 0.5px;
+      display: block; width: 100%; padding: 12px; margin-top: 18px;
+      background: #0af; border: none; border-radius: 8px;
+      color: #000; font-size: 14px; font-weight: 700;
+      font-family: sans-serif; cursor: pointer; letter-spacing: 0.5px;
     }
     .btn-login:hover { background: #09e; }
     .btn-login:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .error-msg {
-      color: #f44;
-      font-size: 12px;
-      text-align: center;
-      margin-top: 10px;
-      min-height: 18px;
-      word-break: break-word;
+      color: #f44; font-size: 12px; text-align: center;
+      margin-top: 10px; min-height: 18px; word-break: break-word;
     }
 
-    /* Monitor */
+    /* ── Monitor ── */
     #monitor-view {
-      display: none;
-      width: 100%;
-      max-width: 300px;
-      text-align: center;
+      display: none; width: 100%; max-width: 340px; text-align: center;
     }
-    .shield { font-size: 48px; margin-bottom: 12px; }
-    .greeting { font-size: 22px; font-weight: 700; color: #eee; }
+    .shield { font-size: 48px; margin-bottom: 8px; }
+    .greeting { font-size: 24px; font-weight: 700; color: #eee; margin-bottom: 2px; }
     .greeting span { color: #0af; }
+    .sub-greeting { font-size: 12px; color: #666; margin-bottom: 16px; }
 
     .status-pill {
-      display: inline-block;
-      padding: 6px 16px;
-      margin: 14px 0 20px;
-      background: #0f02;
-      border: 2px solid #0f04;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #0f8;
+      display: inline-block; padding: 6px 18px; margin-bottom: 20px;
+      background: #1a2a1a; border: 2px solid #2a4a2a;
+      border-radius: 20px; font-size: 13px; font-weight: 600; color: #0f8;
     }
     .status-pill .dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #0f8;
-      margin-right: 6px;
-      vertical-align: middle;
-      animation: blink 2s infinite;
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: #0f8; margin-right: 8px;
+      vertical-align: middle; animation: blink 2s infinite;
     }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    .info-box {
-      background: #1a1a1a;
-      border: 2px solid #222;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 8px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
+    .info-grid {
+      width: 100%; text-align: left;
+      background: #1a1a1a; border: 2px solid #222;
+      border-radius: 10px; overflow: hidden; margin-bottom: 16px;
     }
-    .info-box .lbl { color: #666; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
-    .info-box .val { color: #999; font-family: monospace; }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; font-size: 12px;
+      border-bottom: 1px solid #222;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .lbl {
+      color: #666; text-transform: uppercase;
+      font-weight: 600; letter-spacing: 0.5px; font-size: 10px;
+    }
+    .info-row .val { color: #999; font-family: monospace; font-size: 11px; }
+    .info-row .val.ok { color: #0f8; }
+    .info-row .val.warn { color: #fa0; }
+    .info-row .val.err { color: #f44; }
 
-    .hint { margin-top: 16px; font-size: 11px; color: #444; line-height: 1.7; }
+    .monitors-box {
+      width: 100%; text-align: left;
+      background: #1a1a1a; border: 2px solid #222;
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+    }
+    .monitors-title {
+      font-size: 10px; font-weight: 600; color: #666;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .monitor-item {
+      display: inline-block; padding: 3px 10px; margin: 2px 4px 2px 0;
+      background: #222; border-radius: 4px;
+      font-size: 10px; color: #888; font-weight: 500;
+    }
+    .monitor-item.active { color: #0f8; background: #1a2a1a; }
+
+    .hint { margin-top: 8px; font-size: 11px; color: #444; line-height: 1.7; }
   </style>
 </head>
 <body>
@@ -157,7 +136,6 @@
         <h2>Contest Sign In</h2>
         <p>Enter your credentials to begin</p>
       </div>
-
       <div class="field">
         <label>Contest ID</label>
         <input type="text" id="contest-input" class="mono" placeholder="paste from dashboard" autocomplete="off" spellcheck="false" />
@@ -170,7 +148,6 @@
         <label>Password</label>
         <input type="password" id="password" placeholder="your password" autocomplete="current-password" />
       </div>
-
       <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
       <div id="error" class="error-msg"></div>
     </div>
@@ -179,15 +156,39 @@
     <div id="monitor-view">
       <div class="shield">🛡️</div>
       <div class="greeting">Hi, <span id="user-name">—</span></div>
+      <div class="sub-greeting">You're all set. Good luck!</div>
       <div class="status-pill"><span class="dot"></span>Monitoring Active</div>
-      <div class="info-box">
-        <span class="lbl">Contest</span>
-        <span class="val" id="contest-id">—</span>
+
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="lbl">Server</span>
+          <span class="val" id="server-status">Checking...</span>
+        </div>
+        <div class="info-row">
+          <span class="lbl">Contest</span>
+          <span class="val" id="contest-id">—</span>
+        </div>
+        <div class="info-row">
+          <span class="lbl">Session</span>
+          <span class="val" id="session-id">—</span>
+        </div>
+        <div class="info-row">
+          <span class="lbl">Uptime</span>
+          <span class="val" id="uptime">0:00</span>
+        </div>
       </div>
-      <div class="info-box">
-        <span class="lbl">Session</span>
-        <span class="val" id="session-id">—</span>
+
+      <div class="monitors-box">
+        <div class="monitors-title">Active Monitors</div>
+        <span class="monitor-item active">VM Detect</span>
+        <span class="monitor-item active">Processes</span>
+        <span class="monitor-item active">Browser</span>
+        <span class="monitor-item active">Network</span>
+        <span class="monitor-item active">Clipboard</span>
+        <span class="monitor-item active">Focus</span>
+        <span class="monitor-item">Phone (needs model)</span>
       </div>
+
       <div class="hint">
         You can minimize this window.<br>
         Do not close it during the contest.
@@ -196,6 +197,9 @@
   </div>
 
   <script>
+    var loginTime = null;
+    var serverUrl = '';
+
     function getInvoke() {
       try {
         if (window.__TAURI__ && window.__TAURI__.core) return window.__TAURI__.core.invoke;
@@ -233,11 +237,24 @@
       try {
         var result = await invoke('login', { contestId: contestId, email: email, password: password });
         if (result && result.success) {
+          loginTime = Date.now();
           document.getElementById('user-name').textContent = result.name || email;
           document.getElementById('session-id').textContent = (result.user_id || '').slice(0, 8) + '...';
           document.getElementById('contest-id').textContent = contestId.slice(0, 8) + '...';
           document.getElementById('login-view').style.display = 'none';
           document.getElementById('monitor-view').style.display = 'block';
+
+          // Get server URL from config
+          try {
+            var config = await invoke('get_config');
+            serverUrl = config.supabase_url || '';
+            checkServerStatus();
+          } catch(e) {}
+
+          // Start uptime timer
+          setInterval(updateUptime, 1000);
+          // Check server every 30s
+          setInterval(checkServerStatus, 30000);
         } else {
           errorEl.textContent = 'Unexpected response';
           btn.disabled = false;
@@ -251,6 +268,30 @@
         errorEl.textContent = msg || 'Login failed';
         btn.disabled = false;
         btn.textContent = 'Sign In';
+      }
+    }
+
+    function updateUptime() {
+      if (!loginTime) return;
+      var secs = Math.floor((Date.now() - loginTime) / 1000);
+      var h = Math.floor(secs / 3600);
+      var m = Math.floor((secs % 3600) / 60);
+      var s = secs % 60;
+      var str = h > 0 ? h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0')
+                       : m + ':' + String(s).padStart(2,'0');
+      document.getElementById('uptime').textContent = str;
+    }
+
+    async function checkServerStatus() {
+      var el = document.getElementById('server-status');
+      if (!serverUrl) { el.textContent = 'Unknown'; el.className = 'val warn'; return; }
+      try {
+        var resp = await fetch(serverUrl + '/rest/v1/', { method: 'HEAD', mode: 'no-cors' });
+        el.textContent = 'Connected';
+        el.className = 'val ok';
+      } catch(e) {
+        el.textContent = 'Offline';
+        el.className = 'val err';
       }
     }
 
