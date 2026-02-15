@@ -17,10 +17,14 @@ interface Session {
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [contests, setContests] = useState<{ id: string; name: string }[]>([]);
+  const [contestFilter, setContestFilter] = useState<string>("all");
   const [now, setNow] = useState(Date.now());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadSessions();
+    loadContests();
     const timer = setInterval(() => setNow(Date.now()), 5000);
 
     const channel = supabase
@@ -43,14 +47,19 @@ export default function SessionsPage() {
       .from("sessions")
       .select("*")
       .order("started_at", { ascending: false })
-      .limit(100);
+      .limit(200);
     if (data) setSessions(data);
+  }
+
+  async function loadContests() {
+    const { data } = await supabase.from("contests").select("id, name");
+    if (data) setContests(data);
   }
 
   function getStatus(s: Session): { label: string; color: string; dot: string } {
     if (!s.is_active) return { label: "Disconnected", color: "text-red-400", dot: "bg-red-500" };
     const diff = now - new Date(s.last_heartbeat).getTime();
-    if (diff > 90_000) return { label: "Lost Connection", color: "text-red-400", dot: "bg-red-500" };
+    if (diff > 90_000) return { label: "Lost", color: "text-red-400", dot: "bg-red-500" };
     if (diff > 45_000) return { label: "Stale", color: "text-yellow-400", dot: "bg-yellow-500" };
     return { label: "Online", color: "text-vanguard-green", dot: "bg-vanguard-green animate-pulse" };
   }
@@ -70,17 +79,77 @@ export default function SessionsPage() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
-  const online = sessions.filter(s => getStatus(s).label === "Online").length;
-  const total = sessions.length;
+  async function markStaleDisconnected() {
+    setLoading(true);
+    const staleThreshold = new Date(Date.now() - 90_000).toISOString();
+    await supabase
+      .from("sessions")
+      .update({ is_active: false })
+      .eq("is_active", true)
+      .lt("last_heartbeat", staleThreshold);
+    await loadSessions();
+    setLoading(false);
+  }
+
+  async function deleteContestSessions(contestId: string) {
+    if (!confirm("Delete ALL sessions for this contest?")) return;
+    setLoading(true);
+    await supabase.from("sessions").delete().eq("contest_id", contestId);
+    setSessions(prev => prev.filter(s => s.contest_id !== contestId));
+    setLoading(false);
+  }
+
+  const filtered = sessions.filter(s =>
+    contestFilter === "all" || s.contest_id === contestFilter
+  );
+
+  const online = filtered.filter(s => getStatus(s).label === "Online").length;
+  const staleCount = filtered.filter(s => ["Stale", "Lost"].includes(getStatus(s).label)).length;
+  const disconnected = filtered.filter(s => getStatus(s).label === "Disconnected").length;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Agent Sessions</h1>
-        <div className="flex gap-4 text-sm">
+        <div className="flex gap-3 text-sm">
           <span className="text-vanguard-green font-semibold">{online} online</span>
-          <span className="text-gray-500">{total} total</span>
+          {staleCount > 0 && <span className="text-yellow-400">{staleCount} stale</span>}
+          <span className="text-gray-500">{disconnected} disconnected</span>
         </div>
+      </div>
+
+      {/* Filters & actions */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <select
+          value={contestFilter}
+          onChange={(e) => setContestFilter(e.target.value)}
+          className="px-3 py-1.5 text-xs rounded border border-vanguard-border bg-vanguard-card text-gray-400 outline-none"
+        >
+          <option value="all">All Contests</option>
+          {contests.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        {staleCount > 0 && (
+          <button
+            onClick={markStaleDisconnected}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs rounded border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-colors disabled:opacity-30"
+          >
+            Mark Stale as Disconnected
+          </button>
+        )}
+
+        {contestFilter !== "all" && (
+          <button
+            onClick={() => deleteContestSessions(contestFilter)}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs rounded border border-red-500/30 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 ml-auto"
+          >
+            🗑 Delete Contest Sessions
+          </button>
+        )}
       </div>
 
       <div className="bg-vanguard-card border border-vanguard-border rounded-lg overflow-hidden">
@@ -97,7 +166,7 @@ export default function SessionsPage() {
             </tr>
           </thead>
           <tbody>
-            {sessions.map((s) => {
+            {filtered.map((s) => {
               const status = getStatus(s);
               return (
                 <tr
@@ -132,10 +201,10 @@ export default function SessionsPage() {
                 </tr>
               );
             })}
-            {sessions.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                  No sessions yet — contestants will appear here when they sign in
+                  No sessions yet — contestants will appear here when they connect
                 </td>
               </tr>
             )}

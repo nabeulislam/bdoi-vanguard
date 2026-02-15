@@ -11,11 +11,13 @@ export default function ViolationsPage() {
   const [selected, setSelected] = useState<ViolationLog | null>(null);
   const [verdictReason, setVerdictReason] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+  const [archivedCount, setArchivedCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadViolations();
     loadContests();
+    loadArchivedCount();
 
     const channel = supabase
       .channel("violations-page")
@@ -23,7 +25,10 @@ export default function ViolationsPage() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "violation_logs" },
         (payload) => {
-          setViolations((prev) => [payload.new as ViolationLog, ...prev]);
+          const v = payload.new as ViolationLog;
+          if (v.severity !== "CLEAN") {
+            setViolations((prev) => [v, ...prev]);
+          }
         }
       )
       .subscribe();
@@ -32,24 +37,38 @@ export default function ViolationsPage() {
   }, []);
 
   async function loadViolations() {
-    const { data } = await supabase
+    let query = supabase
       .from("violation_logs")
       .select("*")
+      .neq("severity", "CLEAN")
       .order("timestamp", { ascending: false })
       .limit(500);
-    if (data) setViolations(data);
 
-    // Load archived IDs from localStorage
-    try {
-      const stored = localStorage.getItem("vanguard_archived");
-      if (stored) setArchivedIds(new Set(JSON.parse(stored)));
-    } catch {}
+    if (!showArchived) {
+      query = query.is("archived_at", null);
+    }
+
+    const { data } = await query;
+    if (data) setViolations(data);
   }
 
   async function loadContests() {
     const { data } = await supabase.from("contests").select("id, name");
     if (data) setContests(data);
   }
+
+  async function loadArchivedCount() {
+    const { count } = await supabase
+      .from("violation_logs")
+      .select("*", { count: "exact", head: true })
+      .not("archived_at", "is", null);
+    setArchivedCount(count ?? 0);
+  }
+
+  // Toggle archived view
+  useEffect(() => {
+    loadViolations();
+  }, [showArchived]);
 
   async function submitVerdict(violationId: string, verdict: "CONFIRMED" | "DISMISSED") {
     await supabase.from("flagged_events").insert({
@@ -65,23 +84,44 @@ export default function ViolationsPage() {
     setVerdictReason("");
   }
 
-  function archiveContest(contestId: string) {
-    const ids = violations.filter(v => v.contest_id === contestId).map(v => v.id);
-    const next = new Set([...archivedIds, ...ids]);
-    setArchivedIds(next);
-    localStorage.setItem("vanguard_archived", JSON.stringify([...next]));
+  async function archiveContest(contestId: string) {
+    setLoading(true);
+    const now = new Date().toISOString();
+    await supabase
+      .from("violation_logs")
+      .update({ archived_at: now })
+      .eq("contest_id", contestId)
+      .is("archived_at", null);
+    await loadViolations();
+    await loadArchivedCount();
+    setLoading(false);
   }
 
-  function unarchiveAll() {
-    setArchivedIds(new Set());
-    localStorage.removeItem("vanguard_archived");
+  async function unarchiveContest(contestId: string) {
+    setLoading(true);
+    await supabase
+      .from("violation_logs")
+      .update({ archived_at: null })
+      .eq("contest_id", contestId)
+      .not("archived_at", "is", null);
+    await loadViolations();
+    await loadArchivedCount();
+    setLoading(false);
   }
 
-  async function deleteContestViolations(contestId: string) {
-    if (!confirm("Permanently delete ALL violations for this contest? This cannot be undone.")) return;
+  async function deleteContestData(contestId: string) {
+    if (!confirm("Permanently delete ALL violations AND sessions for this contest? This cannot be undone.")) return;
+    setLoading(true);
+    // Delete violations
     await supabase.from("violation_logs").delete().eq("contest_id", contestId);
+    // Delete sessions
+    await supabase.from("sessions").delete().eq("contest_id", contestId);
+    // Delete flagged events
+    await supabase.from("flagged_events").delete().eq("contest_id", contestId);
     setViolations(prev => prev.filter(v => v.contest_id !== contestId));
+    await loadArchivedCount();
     setSelected(null);
+    setLoading(false);
   }
 
   function exportViolations(format: "csv" | "json") {
@@ -98,7 +138,7 @@ export default function ViolationsPage() {
       const headers = ["timestamp", "severity", "source", "contestant_name", "contestant_id", "summary", "confidence", "evidence_hash"];
       const rows = data.map(v =>
         headers.map(h => {
-          const val = String((v as Record<string, unknown>)[h] || "");
+          const val = String((v as unknown as Record<string, unknown>)[h] || "");
           return '"' + val.replace(/"/g, '""') + '"';
         }).join(",")
       );
@@ -111,20 +151,23 @@ export default function ViolationsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `violations-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    const contestName = contestFilter !== "all"
+      ? contests.find(c => c.id === contestFilter)?.name || "contest"
+      : "all";
+    a.download = `violations-${contestName}-${new Date().toISOString().slice(0, 10)}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   const filtered = violations.filter((v) => {
-    if (!showArchived && archivedIds.has(v.id)) return false;
     if (filter !== "all" && v.severity !== filter) return false;
     if (contestFilter !== "all" && v.contest_id !== contestFilter) return false;
     return true;
   });
 
-  const liveCount = violations.filter(v => !archivedIds.has(v.id)).length;
-  const archivedCount = archivedIds.size;
+  const contestName = contestFilter !== "all"
+    ? contests.find(c => c.id === contestFilter)?.name
+    : null;
 
   return (
     <div>
@@ -135,20 +178,20 @@ export default function ViolationsPage() {
             onClick={() => exportViolations("csv")}
             className="px-3 py-1.5 text-xs rounded border border-vanguard-border text-gray-400 hover:text-white hover:border-vanguard-accent transition-colors"
           >
-            📥 Export CSV
+            📥 CSV
           </button>
           <button
             onClick={() => exportViolations("json")}
             className="px-3 py-1.5 text-xs rounded border border-vanguard-border text-gray-400 hover:text-white hover:border-vanguard-accent transition-colors"
           >
-            📥 Export JSON
+            📥 JSON
           </button>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {["all", "FLAG", "WARN", "WATCH", "CLEAN"].map((f) => (
+        {["all", "FLAG", "WARN", "WATCH"].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -187,61 +230,79 @@ export default function ViolationsPage() {
 
       {/* Contest actions */}
       {contestFilter !== "all" && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-4 p-3 bg-vanguard-card border border-vanguard-border rounded-lg">
+          <span className="text-sm text-gray-400 mr-2">
+            Contest: <strong className="text-white">{contestName}</strong>
+          </span>
           <button
             onClick={() => archiveContest(contestFilter)}
-            className="px-3 py-1.5 text-xs rounded border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+            disabled={loading}
+            className="px-3 py-1.5 text-xs rounded border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-colors disabled:opacity-30"
           >
-            📦 Archive This Contest&apos;s Violations
+            📦 Archive
+          </button>
+          {showArchived && (
+            <button
+              onClick={() => unarchiveContest(contestFilter)}
+              disabled={loading}
+              className="px-3 py-1.5 text-xs rounded border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-30"
+            >
+              📤 Unarchive
+            </button>
+          )}
+          <button
+            onClick={() => exportViolations("csv")}
+            className="px-3 py-1.5 text-xs rounded border border-vanguard-border text-gray-400 hover:text-white transition-colors"
+          >
+            📥 Export Contest
           </button>
           <button
-            onClick={() => deleteContestViolations(contestFilter)}
-            className="px-3 py-1.5 text-xs rounded border border-red-500/30 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            onClick={() => deleteContestData(contestFilter)}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs rounded border border-red-500/30 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 ml-auto"
           >
-            🗑 Delete This Contest&apos;s Violations
-          </button>
-        </div>
-      )}
-      {archivedCount > 0 && contestFilter === "all" && (
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={unarchiveAll}
-            className="px-3 py-1.5 text-xs rounded border border-vanguard-border text-gray-500 hover:text-white transition-colors"
-          >
-            Unarchive All
+            🗑 Delete Contest Data
           </button>
         </div>
       )}
 
-      <p className="text-xs text-gray-600 mb-3">{liveCount} live · {filtered.length} shown</p>
+      <p className="text-xs text-gray-600 mb-3">
+        {filtered.length} shown{showArchived ? " (including archived)" : ""}
+      </p>
 
       <div className="grid grid-cols-3 gap-6">
         {/* Violation list */}
         <div className="col-span-2 space-y-2 max-h-[80vh] overflow-y-auto">
-          {filtered.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => setSelected(v)}
-              className={`w-full text-left p-3 rounded border transition-colors ${
-                selected?.id === v.id ? "ring-2 ring-vanguard-accent" : ""
-              } ${archivedIds.has(v.id) ? "opacity-40" : ""} ${severityBg(v.severity)} hover:brightness-110`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`font-mono text-xs font-bold ${severityColor(v.severity)}`}>
-                    {v.severity}
+          {filtered.map((v) => {
+            const isArchived = !!(v as unknown as Record<string, unknown>).archived_at;
+            return (
+              <button
+                key={v.id}
+                onClick={() => setSelected(v)}
+                className={`w-full text-left p-3 rounded border transition-colors ${
+                  selected?.id === v.id ? "ring-2 ring-vanguard-accent" : ""
+                } ${isArchived ? "opacity-40" : ""} ${severityBg(v.severity)} hover:brightness-110`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-mono text-xs font-bold ${severityColor(v.severity)}`}>
+                      {v.severity}
+                    </span>
+                    <span className="text-sm">{v.summary}</span>
+                    {isArchived && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700 text-gray-400">archived</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {new Date(v.timestamp).toLocaleTimeString()}
                   </span>
-                  <span className="text-sm">{v.summary}</span>
                 </div>
-                <span className="text-xs text-gray-500">
-                  {new Date(v.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {v.contestant_name || v.contestant_id} · {v.source}
-              </p>
-            </button>
-          ))}
+                <p className="text-xs text-gray-500 mt-1">
+                  {v.contestant_name || v.contestant_id} · {v.source}
+                </p>
+              </button>
+            );
+          })}
           {filtered.length === 0 && (
             <p className="text-gray-500 text-sm text-center py-8">No violations match filters</p>
           )}
@@ -284,7 +345,7 @@ export default function ViolationsPage() {
                       disabled={!verdictReason.trim()}
                       className="flex-1 bg-red-500/20 border border-red-500/50 text-red-400 rounded px-3 py-1.5 text-xs hover:bg-red-500/30 disabled:opacity-30"
                     >
-                      ✓ Confirm Violation
+                      ✓ Confirm
                     </button>
                     <button
                       onClick={() => submitVerdict(selected.id, "DISMISSED")}

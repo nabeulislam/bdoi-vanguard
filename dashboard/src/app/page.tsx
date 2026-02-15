@@ -3,56 +3,96 @@
 import { useEffect, useState } from "react";
 import { supabase, ViolationLog, severityColor, severityBg } from "@/lib/supabase";
 
+interface SessionSummary {
+  online: number;
+  stale: number;
+  disconnected: number;
+}
+
 export default function DashboardHome() {
   const [recentViolations, setRecentViolations] = useState<ViolationLog[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    flags: 0,
-    warns: 0,
-    activeAgents: 0,
-  });
+  const [stats, setStats] = useState({ total: 0, flags: 0, warns: 0 });
+  const [sessions, setSessions] = useState<SessionSummary>({ online: 0, stale: 0, disconnected: 0 });
 
   useEffect(() => {
     loadData();
-    // Subscribe to realtime violations
+    loadSessions();
+    const timer = setInterval(loadSessions, 10_000);
+
     const channel = supabase
       .channel("violations-realtime")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "violation_logs" },
         (payload) => {
-          setRecentViolations((prev) => [payload.new as ViolationLog, ...prev].slice(0, 50));
+          const v = payload.new as ViolationLog;
+          if (v.severity === "CLEAN") return;
+          setRecentViolations((prev) => [v, ...prev].slice(0, 50));
           setStats((prev) => ({
-            ...prev,
             total: prev.total + 1,
-            flags: (payload.new as ViolationLog).severity === "FLAG" ? prev.flags + 1 : prev.flags,
-            warns: (payload.new as ViolationLog).severity === "WARN" ? prev.warns + 1 : prev.warns,
+            flags: v.severity === "FLAG" ? prev.flags + 1 : prev.flags,
+            warns: v.severity === "WARN" ? prev.warns + 1 : prev.warns,
           }));
         }
       )
       .subscribe();
 
     return () => {
+      clearInterval(timer);
       supabase.removeChannel(channel);
     };
   }, []);
 
   async function loadData() {
-    const { data: violations } = await supabase
+    const { data: violations, count } = await supabase
       .from("violation_logs")
-      .select("*")
+      .select("*", { count: "exact" })
+      .is("archived_at", null)
+      .neq("severity", "CLEAN")
       .order("timestamp", { ascending: false })
       .limit(50);
 
     if (violations) {
       setRecentViolations(violations);
-      setStats({
-        total: violations.length,
-        flags: violations.filter((v) => v.severity === "FLAG").length,
-        warns: violations.filter((v) => v.severity === "WARN").length,
-        activeAgents: new Set(violations.map((v) => v.contestant_id)).size,
-      });
     }
+
+    // Get total counts from all violations
+    const { count: totalCount } = await supabase
+      .from("violation_logs")
+      .select("*", { count: "exact", head: true })
+      .is("archived_at", null)
+      .neq("severity", "CLEAN");
+    const { count: flagCount } = await supabase
+      .from("violation_logs")
+      .select("*", { count: "exact", head: true })
+      .is("archived_at", null)
+      .eq("severity", "FLAG");
+    const { count: warnCount } = await supabase
+      .from("violation_logs")
+      .select("*", { count: "exact", head: true })
+      .is("archived_at", null)
+      .eq("severity", "WARN");
+
+    setStats({
+      total: totalCount ?? 0,
+      flags: flagCount ?? 0,
+      warns: warnCount ?? 0,
+    });
+  }
+
+  async function loadSessions() {
+    const { data } = await supabase.from("sessions").select("is_active, last_heartbeat");
+    if (!data) return;
+
+    const now = Date.now();
+    let online = 0, stale = 0, disconnected = 0;
+    for (const s of data) {
+      if (!s.is_active) { disconnected++; continue; }
+      const diff = now - new Date(s.last_heartbeat).getTime();
+      if (diff > 90_000) stale++;
+      else online++;
+    }
+    setSessions({ online, stale, disconnected });
   }
 
   return (
@@ -65,11 +105,12 @@ export default function DashboardHome() {
       </h1>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <StatCard label="Agents Online" value={sessions.online} color="text-vanguard-green" />
+        <StatCard label="Stale / Lost" value={sessions.stale} color="text-yellow-400" />
         <StatCard label="Total Events" value={stats.total} color="text-white" />
         <StatCard label="Flags" value={stats.flags} color="text-vanguard-red" />
-        <StatCard label="Warnings" value={stats.warns} color="text-vanguard-yellow" />
-        <StatCard label="Active Agents" value={stats.activeAgents} color="text-vanguard-green" />
+        <StatCard label="Warnings" value={stats.warns} color="text-orange-500" />
       </div>
 
       {/* Live violation feed */}
@@ -102,7 +143,7 @@ export default function DashboardHome() {
                   href={`/violations?id=${v.id}`}
                   className="text-xs text-vanguard-accent hover:underline"
                 >
-                  View Details →
+                  View →
                 </a>
               </div>
             ))}
