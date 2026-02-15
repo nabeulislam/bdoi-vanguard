@@ -103,6 +103,10 @@
     <!-- Login View -->
     <div id="login-view" class="login-form">
       <div class="input-group">
+        <label>Contest ID</label>
+        <input type="text" id="contest-input" placeholder="paste contest ID from admin" autocomplete="off" spellcheck="false" style="font-family:monospace;font-size:0.75rem;" />
+      </div>
+      <div class="input-group">
         <label>Email</label>
         <input type="email" id="email" placeholder="contestant@bdoi.org" autocomplete="email" />
       </div>
@@ -137,13 +141,14 @@
     const { invoke } = window.__TAURI__.core;
 
     async function doLogin() {
+      const contestId = document.getElementById('contest-input').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const errorEl = document.getElementById('error');
       const btn = document.getElementById('login-btn');
 
-      if (!email || !password) {
-        errorEl.textContent = 'Please enter email and password';
+      if (!contestId || !email || !password) {
+        errorEl.textContent = 'Please fill in all fields';
         return;
       }
 
@@ -152,14 +157,12 @@
       errorEl.textContent = '';
 
       try {
-        const result = await invoke('login', { email, password });
+        const result = await invoke('login', { contestId, email, password });
         if (result.success) {
           document.getElementById('user-name').textContent = result.name;
           document.getElementById('session-id').textContent = result.user_id.slice(0, 8) + '...';
 
-          // Load config
-          const config = await invoke('get_config');
-          document.getElementById('contest-id').textContent = config.contest_id;
+          document.getElementById('contest-id').textContent = contestId;
 
           // Switch views
           document.getElementById('login-view').style.display = 'none';

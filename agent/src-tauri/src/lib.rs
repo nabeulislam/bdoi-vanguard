@@ -74,6 +74,7 @@ impl AntiCheatEngine {
 
 #[tauri::command]
 async fn login(
+    contest_id: String,
     email: String,
     password: String,
     state: tauri::State<'_, Arc<AppState>>,
@@ -105,11 +106,13 @@ async fn login(
 
     if !already_monitoring {
         *state.monitoring.lock().unwrap() = true;
+        let contest = contest_id.clone();
 
         std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
             rt.block_on(async move {
                 let mut cfg = config.clone();
+                cfg.contest_id = contest;
                 cfg.contestant_id = uid;
                 cfg.contestant_name = uname;
                 cfg.access_token = Some(access_token);
