@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BDOI Vanguard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      user-select: none;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 2rem;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #00ff88;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,136,0.4); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 8px rgba(0,255,136,0); }
+    }
+    .info {
+      font-size: 0.8rem;
+      color: #666;
+      line-height: 1.6;
+    }
+    .info span { color: #aaa; }
+    #contest-id, #contestant { color: #00d4ff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">BDOI VANGUARD</div>
+    <div class="subtitle">Anti-Cheat Monitor v0.1.0</div>
+    <div class="status">
+      <div class="status-dot"></div>
+      <span>Monitoring Active</span>
+    </div>
+    <div class="info">
+      <div>Contest: <span id="contest-id">—</span></div>
+      <div>Contestant: <span id="contestant">—</span></div>
+      <div style="margin-top: 1rem; color: #444;">
+        This window can be minimized.<br>
+        Do not close it during the contest.
+      </div>
+    </div>
+  </div>
+  <script>
+    const { invoke } = window.__TAURI__.core;
+
+    async function init() {
+      try {
+        const config = await invoke('get_config');
+        document.getElementById('contest-id').textContent = config.contest_id;
+        document.getElementById('contestant').textContent = config.contestant_name;
+      } catch (e) {
+        console.error('Failed to load config:', e);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

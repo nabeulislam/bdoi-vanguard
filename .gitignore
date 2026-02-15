@@ -1,0 +1,19 @@
+# Rust
+target/
+*.swp
+
+# Node
+node_modules/
+.next/
+.env.local
+
+# ML models (too large for git)
+*.onnx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Evidence logs
+evidence/
+*.jsonl
