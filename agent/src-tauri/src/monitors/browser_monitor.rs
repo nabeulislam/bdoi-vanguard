@@ -35,7 +35,7 @@ impl BrowserMonitor {
                 },
                 AiPattern {
                     name: "Google Gemini",
-                    keywords: vec!["gemini.google", "google gemini", "bard.google"],
+                    keywords: vec!["gemini.google", "google gemini", "bard.google", "gemini - google", "gemini"],
                     severity: Severity::Flag,
                 },
                 AiPattern {
@@ -87,10 +87,21 @@ impl BrowserMonitor {
             if let Ok(output) = Command::new("wmctrl").arg("-l").output() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 for line in stdout.lines() {
-                    // wmctrl format: <window_id> <desktop> <machine> <title...>
-                    let parts: Vec<&str> = line.splitn(4, char::is_whitespace).collect();
-                    if parts.len() >= 4 {
-                        titles.push(parts[3].to_string());
+                    // wmctrl format: 0x1234  0 hostname  Window Title
+                    // Split carefully — fields separated by variable whitespace
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() { continue; }
+                    // Skip window id
+                    let rest = trimmed.splitn(2, char::is_whitespace)
+                        .nth(1).unwrap_or("").trim_start();
+                    // Skip desktop number
+                    let rest = rest.splitn(2, char::is_whitespace)
+                        .nth(1).unwrap_or("").trim_start();
+                    // Skip hostname — title is everything after
+                    let title = rest.splitn(2, char::is_whitespace)
+                        .nth(1).unwrap_or("").trim_start();
+                    if !title.is_empty() {
+                        titles.push(title.to_string());
                     }
                 }
             } else if let Ok(output) = Command::new("xdotool")

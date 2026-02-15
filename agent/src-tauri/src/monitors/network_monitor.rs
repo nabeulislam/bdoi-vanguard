@@ -99,9 +99,29 @@ impl NetworkMonitor {
 
         #[cfg(target_os = "linux")]
         {
-            // Use ss (socket statistics) — faster than netstat
+            // Use ss with -r to resolve IP addresses to domain names
+            if let Ok(output) = Command::new("ss")
+                .args(["-tunap", "-r"])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    connections.push(line.to_lowercase());
+                }
+            }
+            // Fallback: also check without -r for raw IPs
             if let Ok(output) = Command::new("ss")
                 .args(["-tunap"])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    connections.push(line.to_lowercase());
+                }
+            }
+            // Also check recent DNS queries via journalctl if available
+            if let Ok(output) = Command::new("journalctl")
+                .args(["-u", "systemd-resolved", "--no-pager", "-n", "200", "--output=cat"])
                 .output()
             {
                 let stdout = String::from_utf8_lossy(&output.stdout);
