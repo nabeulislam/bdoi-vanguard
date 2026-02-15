@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { Sidebar } from "./Sidebar";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -48,5 +49,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <>{children}</>;
+  // Login page: no sidebar
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
+  // Authenticated pages: sidebar layout
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <main className="flex-1 p-6 ml-0 sm:ml-64">{children}</main>
+    </div>
+  );
 }
