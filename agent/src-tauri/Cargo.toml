@@ -20,6 +20,9 @@ uuid = { version = "1", features = ["v4"] }
 log = "0.4"
 env_logger = "0.11"
 dirs = "6"
+ort = "2.0.0-rc.11"
+ndarray = "0.17"
+image = "0.25"
 
 # Platform-specific
 [target.'cfg(windows)'.dependencies]
@@ -31,11 +34,14 @@ windows = { version = "0.58", features = [
     "Win32_UI_Accessibility",
     "Win32_System_SystemInformation",
 ] }
+nokhwa = { version = "0.10", features = ["input-msmf"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = { version = "0.13", optional = true }
+nokhwa = { version = "0.10", features = ["input-v4l"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+nokhwa = { version = "0.10", features = ["input-avfoundation"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

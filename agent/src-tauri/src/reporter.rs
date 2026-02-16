@@ -3,6 +3,8 @@ use crate::evidence::DetectionEvent;
 use log::{error, info, warn};
 use reqwest::Client;
 use serde_json::json;
+use std::io::{BufRead, Write};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -11,6 +13,7 @@ pub struct Reporter {
     config: Arc<AgentConfig>,
     rx: mpsc::Receiver<DetectionEvent>,
     session_id: Option<String>,
+    pending_path: PathBuf,
 }
 
 #[derive(Clone)]
@@ -28,11 +31,13 @@ impl ReporterHandle {
 
 pub fn create_reporter(config: Arc<AgentConfig>) -> (Reporter, ReporterHandle) {
     let (tx, rx) = mpsc::channel(256);
+    let pending_path = config.evidence_dir.join("pending_upload.jsonl");
     let reporter = Reporter {
         client: Client::new(),
         config,
         rx,
         session_id: None,
+        pending_path,
     };
     let handle = ReporterHandle { tx };
     (reporter, handle)
@@ -40,16 +45,32 @@ pub fn create_reporter(config: Arc<AgentConfig>) -> (Reporter, ReporterHandle) {
 
 impl Reporter {
     pub async fn run(mut self) {
-        info!("Reporter started — sending events to Supabase");
+        info!("Reporter started — storing logs locally, uploading when online");
 
         // Register session on connect
         self.register_session().await;
 
-        while let Some(event) = self.rx.recv().await {
-            self.send_event(&event).await;
+        let mut flush_interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        flush_interval.tick().await; // consume first immediate tick
 
-            if matches!(event.source, crate::evidence::MonitorSource::Heartbeat) {
-                self.update_session_heartbeat().await;
+        loop {
+            tokio::select! {
+                Some(event) = self.rx.recv() => {
+                    // Always persist locally first
+                    self.log_locally(&event);
+                    // Try to upload; on failure, queue for retry
+                    if !self.try_upload_event(&event).await {
+                        self.enqueue_pending(&event);
+                    }
+
+                    if matches!(event.source, crate::evidence::MonitorSource::Heartbeat) {
+                        self.update_session_heartbeat().await;
+                    }
+                }
+                _ = flush_interval.tick() => {
+                    self.flush_pending().await;
+                }
+                else => break,
             }
         }
 
@@ -121,7 +142,8 @@ impl Reporter {
         info!("Session disconnected: {}", sid);
     }
 
-    async fn send_event(&self, event: &DetectionEvent) {
+    /// Attempt to upload a single event. Returns true on success.
+    async fn try_upload_event(&self, event: &DetectionEvent) -> bool {
         let payload = json!({
             "event_id": event.id,
             "contest_id": self.config.contest_id,
@@ -160,20 +182,81 @@ impl Reporter {
                     "[{}] Event sent: {} ({})",
                     event.source, event.summary, event.severity
                 );
+                true
             }
             Ok(resp) => {
-                error!(
-                    "Supabase returned {}: {:?}",
+                warn!(
+                    "Upload failed ({}), event queued for retry: {}",
                     resp.status(),
-                    resp.text().await.unwrap_or_default()
+                    event.id
                 );
+                false
             }
             Err(e) => {
-                error!("Failed to send event to Supabase: {}", e);
+                warn!("Upload error ({}), event queued for retry: {}", e, event.id);
+                false
+            }
+        }
+    }
+
+    /// Append an event to the pending-upload queue file.
+    fn enqueue_pending(&self, event: &DetectionEvent) {
+        if std::fs::create_dir_all(&self.config.evidence_dir).is_ok() {
+            if let Ok(line) = serde_json::to_string(event) {
+                if let Ok(mut f) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&self.pending_path)
+                {
+                    let _ = writeln!(f, "{}", line);
+                }
+            }
+        }
+    }
+
+    /// Try to upload all pending events. Successfully uploaded ones are removed from the queue.
+    async fn flush_pending(&self) {
+        let events: Vec<DetectionEvent> = match std::fs::File::open(&self.pending_path) {
+            Ok(f) => std::io::BufReader::new(f)
+                .lines()
+                .filter_map(|l| l.ok())
+                .filter_map(|l| serde_json::from_str(&l).ok())
+                .collect(),
+            Err(_) => return,
+        };
+
+        if events.is_empty() {
+            return;
+        }
+
+        info!("Flushing {} pending events...", events.len());
+
+        let mut still_pending: Vec<String> = Vec::new();
+        for event in &events {
+            if !self.try_upload_event(event).await {
+                if let Ok(line) = serde_json::to_string(event) {
+                    still_pending.push(line);
+                }
             }
         }
 
-        self.log_locally(event);
+        // Rewrite the pending file with only the events that still failed
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(&self.pending_path)
+        {
+            for line in &still_pending {
+                let _ = writeln!(f, "{}", line);
+            }
+        }
+
+        if still_pending.is_empty() {
+            info!("All pending events uploaded successfully");
+        } else {
+            warn!("{} events still pending upload", still_pending.len());
+        }
     }
 
     fn log_locally(&self, event: &DetectionEvent) {

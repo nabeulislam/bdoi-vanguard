@@ -123,6 +123,24 @@
     .monitor-item.active { color: #0f8; background: #1a2a1a; }
 
     .hint { margin-top: 8px; font-size: 11px; color: #444; line-height: 1.7; }
+
+    /* ── Offline banner ── */
+    .offline-banner {
+      display: none; width: 100%; max-width: 340px;
+      background: #2a1a00; border: 2px solid #4a3000;
+      border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+      text-align: center; animation: fadeIn 0.3s ease;
+    }
+    .offline-banner.visible { display: block; }
+    .offline-banner .offline-icon { font-size: 20px; margin-bottom: 4px; }
+    .offline-banner .offline-title {
+      font-size: 13px; font-weight: 700; color: #fa0; margin-bottom: 4px;
+    }
+    .offline-banner .offline-msg {
+      font-size: 11px; color: #a88; line-height: 1.5;
+    }
+    .offline-banner .offline-msg strong { color: #0f8; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
   </style>
 </head>
 <body>
@@ -158,6 +176,15 @@
       <div class="greeting">Hi, <span id="user-name">—</span></div>
       <div class="sub-greeting">You're all set. Good luck!</div>
       <div class="status-pill"><span class="dot"></span>Monitoring Active</div>
+
+      <div class="offline-banner" id="offline-banner">
+        <div class="offline-icon">📡</div>
+        <div class="offline-title">Server Disconnected</div>
+        <div class="offline-msg">
+          Don't worry — logs are <strong>stored locally</strong>.<br>
+          They will be uploaded automatically when you're back online.
+        </div>
+      </div>
 
       <div class="info-grid">
         <div class="info-row">
@@ -284,14 +311,24 @@
 
     async function checkServerStatus() {
       var el = document.getElementById('server-status');
+      var banner = document.getElementById('offline-banner');
       if (!serverUrl) { el.textContent = 'Unknown'; el.className = 'val warn'; return; }
       try {
-        var resp = await fetch(serverUrl + '/rest/v1/', { method: 'HEAD', mode: 'no-cors' });
-        el.textContent = 'Connected';
-        el.className = 'val ok';
+        var controller = new AbortController();
+        var timeout = setTimeout(function() { controller.abort(); }, 5000);
+        var resp = await fetch(serverUrl + '/rest/v1/', { signal: controller.signal });
+        clearTimeout(timeout);
+        if (resp.ok || resp.status === 401 || resp.status === 403) {
+          el.textContent = 'Connected';
+          el.className = 'val ok';
+          banner.classList.remove('visible');
+        } else {
+          throw new Error('status ' + resp.status);
+        }
       } catch(e) {
         el.textContent = 'Offline';
         el.className = 'val err';
+        banner.classList.add('visible');
       }
     }
 
