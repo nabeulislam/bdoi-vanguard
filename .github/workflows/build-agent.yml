@@ -40,6 +40,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: agent/src-tauri
+          prefix-key: ${{ matrix.os }}
 
       # Linux dependencies
       - name: Install Linux deps
