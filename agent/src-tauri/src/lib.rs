@@ -29,15 +29,18 @@ pub struct AntiCheatEngine {
 
 impl AntiCheatEngine {
     pub fn new(reporter: ReporterHandle) -> Self {
-        let monitors: Vec<Box<dyn Monitor>> = vec![
+        #[allow(unused_mut)]
+        let mut monitors: Vec<Box<dyn Monitor>> = vec![
             Box::new(monitors::vm_detect::VmDetector::new()),
             Box::new(monitors::process_monitor::ProcessMonitor::new()),
             Box::new(monitors::browser_monitor::BrowserMonitor::new()),
             Box::new(monitors::network_monitor::NetworkMonitor::new()),
             Box::new(monitors::clipboard_monitor::ClipboardMonitor::new()),
             Box::new(monitors::focus_monitor::FocusMonitor::new()),
-            Box::new(monitors::phone_detect::PhoneDetector::new()),
         ];
+
+        #[cfg(feature = "phone-detect")]
+        monitors.push(Box::new(monitors::phone_detect::PhoneDetector::new()));
 
         Self {
             monitors,

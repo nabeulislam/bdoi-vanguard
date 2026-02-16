@@ -7,7 +7,7 @@ Grab the latest installers from the [**Releases**](https://github.com/nabeulisla
 | Platform | File | Notes |
 |---|---|---|
 | **Linux** (recommended) | `BdOI-Vanguard_x.x.x_amd64.AppImage` | Works on most distros (Ubuntu 20.04+, Fedora 36+, etc.) |
-| **Linux** (Debian/Ubuntu 24.04+) | `BdOI-Vanguard_x.x.x_amd64.deb` | Native `.deb` package |
+| **Linux** (Debian/Ubuntu) | `BdOI-Vanguard_x.x.x_amd64.deb` | Native `.deb` package |
 | **Windows** | `BdOI-Vanguard_x.x.x_x64-setup.exe` | NSIS installer (recommended) |
 | **Windows** | `BdOI-Vanguard_x.x.x_x64_en-US.msi` | MSI installer |
 | **macOS** (Apple Silicon) | `BdOI-Vanguard_x.x.x_aarch64.dmg` | For M1/M2/M3/M4 Macs |
@@ -19,20 +19,14 @@ Grab the latest installers from the [**Releases**](https://github.com/nabeulisla
 ### AppImage (recommended — works on most distros)
 
 ```bash
-# Download
-chmod +x BdOI-Vanguard_*.AppImage
-
-# Run
-./BdOI-Vanguard_*.AppImage
+chmod +x "BdOI-Vanguard_1.0.0_amd64.AppImage"
+./"BdOI-Vanguard_1.0.0_amd64.AppImage"
 ```
 
-> **Note:** If you get a GLIBC error with the `.deb` package, use the AppImage instead.
-> The `.deb` requires Ubuntu 24.04+ or equivalent (GLIBC ≥ 2.39).
-
-### Debian/Ubuntu 24.04+ (.deb)
+### Debian/Ubuntu (.deb)
 
 ```bash
-sudo dpkg -i BdOI-Vanguard_*_amd64.deb
+sudo dpkg -i "BdOI-Vanguard_1.0.0_amd64.deb"
 
 # If missing dependencies:
 sudo apt-get install -f
@@ -103,7 +97,6 @@ Local evidence logs are stored at:
 
 | Issue | Solution |
 |---|---|
-| GLIBC error on Linux | Use the `.AppImage` instead of `.deb` |
 | SmartScreen warning on Windows | Click **More info → Run anyway** |
 | macOS "unidentified developer" | Right-click → Open → Open |
 | "App not ready" on login | Wait a few seconds and retry |
@@ -117,14 +110,18 @@ Local evidence logs are stored at:
 # Prerequisites: Rust, Node.js, system deps (see below)
 
 # Linux deps:
-sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf libv4l-dev
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf
 
 # Install Tauri CLI
 cargo install tauri-cli --version "^2"
 
-# Build
+# Build (Linux — without phone detection)
 cd agent
 cargo tauri build
+
+# Build (macOS/Windows — with phone detection)
+cd agent
+cargo tauri build --features phone-detect
 ```
 
 Output will be in `agent/src-tauri/target/release/bundle/`.
