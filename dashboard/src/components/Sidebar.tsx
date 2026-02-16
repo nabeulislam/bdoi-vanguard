@@ -30,11 +30,14 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-vanguard-card border-r border-vanguard-border flex flex-col">
       <div className="p-6">
-        <h1 className="text-xl font-extrabold">
-          <span className="bg-gradient-to-r from-vanguard-accent to-vanguard-purple bg-clip-text text-transparent">
-            BDOI VANGUARD
-          </span>
-        </h1>
+        <div className="flex items-center gap-3 mb-1">
+          <img src="/logo.png" alt="BdOI" className="w-8 h-8" />
+          <h1 className="text-xl font-extrabold">
+            <span className="bg-gradient-to-r from-vanguard-accent to-vanguard-purple bg-clip-text text-transparent">
+              VANGUARD
+            </span>
+          </h1>
+        </div>
         <p className="text-xs text-gray-500 mt-1">Admin Dashboard</p>
       </div>
 
@@ -85,7 +88,7 @@ export function Sidebar() {
         >
           ← Sign Out
         </button>
-        <p className="text-xs text-gray-700">v0.1.0</p>
+        <p className="text-xs text-gray-700">v1.0.0</p>
       </div>
     </aside>
   );

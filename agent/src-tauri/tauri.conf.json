@@ -1,6 +1,6 @@
 {
-  "productName": "BDOI Vanguard",
-  "version": "0.1.0",
+  "productName": "BdOI Vanguard",
+  "version": "1.0.0",
   "identifier": "com.bdoi.vanguard",
   "build": {
     "frontendDist": "../src",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "BDOI Vanguard - Anti-Cheat Monitor",
+        "title": "BdOI Vanguard — Anti-Cheat Monitor",
         "width": 420,
         "height": 540,
         "resizable": true,
@@ -26,11 +26,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "msi", "nsis"],
+    "targets": ["deb", "appimage", "msi", "nsis", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
-      "icons/128x128@2x.png"
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
     ],
     "linux": {
       "deb": {

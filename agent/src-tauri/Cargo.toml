@@ -1,8 +1,8 @@
 [package]
 name = "bdoi-vanguard-agent"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-description = "BDOI Anti-Cheat Desktop Agent"
+description = "BdOI Anti-Cheat Desktop Agent"
 license = "MIT"
 
 [dependencies]

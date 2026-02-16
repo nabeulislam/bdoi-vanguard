@@ -3,8 +3,9 @@ import "./globals.css";
 import { AuthGuard } from "@/components/AuthGuard";
 
 export const metadata: Metadata = {
-  title: "BDOI Vanguard — Admin Dashboard",
-  description: "Anti-cheat monitoring dashboard for BDOI contests",
+  title: "BdOI Vanguard — Admin Dashboard",
+  description: "Anti-cheat monitoring dashboard for BdOI contests",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({
