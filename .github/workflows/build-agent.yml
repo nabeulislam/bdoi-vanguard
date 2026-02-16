@@ -2,7 +2,7 @@ name: Build Agent (All Platforms)
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths: ['agent/**']
   workflow_dispatch:
 
