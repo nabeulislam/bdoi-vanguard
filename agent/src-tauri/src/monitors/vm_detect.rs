@@ -279,7 +279,7 @@ fn check_mac_address() -> Option<String> {
         if let Ok(output) = Command::new("getmac").args(["/fo", "csv", "/nh"]).output() {
             let macs = String::from_utf8_lossy(&output.stdout).to_lowercase();
             for prefix in &vm_mac_prefixes {
-                let dash_prefix = prefix.replace(':', '-');
+                let dash_prefix = prefix.replace(':', "-");
                 if macs.contains(&dash_prefix) {
                     return Some(format!("vm_mac_oui:{}", prefix));
                 }
